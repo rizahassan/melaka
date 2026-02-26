@@ -35,10 +35,11 @@ melaka deploy
 
 ## Documentation
 
-- [Architecture](./docs/ARCHITECTURE.md) — System design and components
+- [Integration Guide](./docs/INTEGRATION.md) — Step-by-step setup
 - [Configuration](./docs/CONFIGURATION.md) — Config file reference
 - [CLI Reference](./docs/CLI.md) — Command documentation
 - [AI Providers](./docs/AI_PROVIDERS.md) — Supported AI models
+- [Architecture](./docs/ARCHITECTURE.md) — System design and components
 - [Contributing](./CONTRIBUTING.md) — Development guide
 
 ## Status
