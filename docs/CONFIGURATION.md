@@ -12,7 +12,7 @@ Melaka uses a TypeScript configuration file (`melaka.config.ts`) at the root of 
 import { defineConfig } from 'melaka';
 
 export default defineConfig({
-  languages: ['ms-MY', 'zh-CN', 'ta-IN'],
+  languages: ['ms-MY', 'zh-CN', 'ja-JP'],
   
   ai: {
     provider: 'gemini',
@@ -35,7 +35,7 @@ import { defineConfig } from 'melaka';
 
 export default defineConfig({
   // Target languages for translation
-  languages: ['ms-MY', 'zh-CN', 'ta-IN'],
+  languages: ['ms-MY', 'zh-CN', 'ja-JP'],
   
   // AI provider configuration
   ai: {
@@ -57,9 +57,9 @@ export default defineConfig({
   
   // Shared glossary (applies to all collections)
   glossary: {
-    'savings': 'simpanan',
-    'investment': 'pelaburan',
-    'financial': 'kewangan',
+    'checkout': 'checkout',
+    'cart': 'cart',
+    'wishlist': 'wishlist',
   },
   
   // Collections to translate
@@ -67,9 +67,9 @@ export default defineConfig({
     {
       path: 'articles',
       fields: ['title', 'content', 'summary'],
-      prompt: 'This is blog content for a financial literacy platform.',
+      prompt: 'This is blog content for an e-commerce platform.',
       glossary: {
-        'budget': 'belanjawan',
+        'sale': 'jualan',
       },
     },
     {
@@ -79,7 +79,7 @@ export default defineConfig({
       maxConcurrency: 5,
     },
     {
-      path: 'messages',
+      path: 'notifications',
       isCollectionGroup: true,  // For subcollections
       fields: ['title', 'body', 'message'],
     },
@@ -219,9 +219,9 @@ Applied to all collections:
 export default defineConfig({
   glossary: {
     // Term: Translation (or same to preserve)
-    'savings': 'simpanan',
-    'investment': 'pelaburan',
-    'TNB': 'TNB',  // Proper noun, don't translate
+    'checkout': 'checkout',
+    'wishlist': 'senarai hajat',
+    'Acme Inc': 'Acme Inc',  // Proper noun, don't translate
   },
   // ...
 });
@@ -234,10 +234,10 @@ Override or extend for specific collections:
 ```typescript
 collections: [
   {
-    path: 'quiz',
+    path: 'recipes',
     glossary: {
-      'financial': 'kewangan',
-      'literacy': 'celik',
+      'simmer': 'reneh',
+      'sauté': 'tumis',
     },
   },
 ],
@@ -248,7 +248,7 @@ collections: [
 Collection glossary is merged with shared glossary:
 
 ```typescript
-// Effective glossary for 'quiz' collection:
+// Effective glossary for 'recipes' collection:
 {
   ...sharedGlossary,
   ...collectionGlossary,  // Overrides shared
@@ -264,17 +264,17 @@ Custom prompts provide context to the AI:
 ```typescript
 collections: [
   {
-    path: 'quiz',
+    path: 'recipes',
     prompt: `
-      This is educational quiz content about financial literacy.
-      Translate questions and answers clearly for Malaysian students.
-      Keep the educational tone friendly and encouraging.
+      This is cooking recipe content.
+      Translate ingredient names and cooking instructions clearly.
+      Keep measurements in their original units.
     `,
   },
   {
-    path: 'partner_rewards',
+    path: 'promotions',
     prompt: `
-      This is promotional content for restaurant and retail offers.
+      This is promotional content for retail offers.
       Keep the promotional tone engaging.
       Preserve all coupon codes, addresses, and links exactly.
     `,
@@ -289,14 +289,14 @@ collections: [
 For subcollections that appear in multiple places:
 
 ```typescript
-// Translates all 'messages' subcollections across the database
-// e.g., /users/{uid}/messages/{id}, /notifications/{nid}/messages/{id}
+// Translates all 'comments' subcollections across the database
+// e.g., /posts/{pid}/comments/{id}, /products/{prodId}/comments/{id}
 
 collections: [
   {
-    path: 'messages',
+    path: 'comments',
     isCollectionGroup: true,
-    fields: ['title', 'body', 'content'],
+    fields: ['text', 'reply'],
   },
 ],
 ```
@@ -319,13 +319,13 @@ export default defineConfig({
 });
 ```
 
-### Multi-Language Config
+### Multi-Language E-commerce Config
 
 ```typescript
 import { defineConfig } from 'melaka';
 
 export default defineConfig({
-  languages: ['ms-MY', 'zh-CN', 'ta-IN', 'hi-IN'],
+  languages: ['ms-MY', 'zh-CN', 'ja-JP', 'ko-KR'],
   
   ai: {
     provider: 'gemini',
@@ -336,20 +336,20 @@ export default defineConfig({
   region: 'asia-southeast1',
   
   glossary: {
-    'Vespid': 'Vespid',
-    'financial literacy': 'celik kewangan',
+    'Acme Store': 'Acme Store',
+    'free shipping': 'penghantaran percuma',
   },
   
   collections: [
     {
-      path: 'academy',
-      fields: ['topic', 'flash_card_data'],
-      prompt: 'Educational content about financial literacy.',
+      path: 'products',
+      fields: ['name', 'description', 'features'],
+      prompt: 'E-commerce product descriptions. Keep brand names unchanged.',
     },
     {
-      path: 'quiz',
-      fields: ['question', 'choices', 'explanation'],
-      prompt: 'Quiz questions for students learning finance.',
+      path: 'categories',
+      fields: ['name', 'description'],
+      prompt: 'Product category names and descriptions.',
     },
   ],
 });
@@ -438,7 +438,7 @@ $ melaka validate
 ✓ Collections configured: 3
   - articles (3 fields)
   - products (2 fields)
-  - messages (collection group, 3 fields)
+  - comments (collection group, 2 fields)
 ✓ Glossary entries: 15
 
 Config is valid!

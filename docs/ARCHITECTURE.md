@@ -42,7 +42,7 @@ Melaka is designed as a modular system with clear separation of concerns:
           │  ┌──────────┐    ┌──────────┐    ┌──────────┐ │
           │  │Collection│───▶│  i18n/   │───▶│  ms-MY   │ │
           │  │  /doc    │    │          │    │  zh-CN   │ │
-          │  └──────────┘    └──────────┘    │  ta-IN   │ │
+          │  └──────────┘    └──────────┘    │  ja-JP   │ │
           │                                   └──────────┘ │
           └───────────────────────────────────────────────┘
 ```
@@ -116,7 +116,7 @@ Translations are stored as subcollections under each document:
 /articles/article-123
 /articles/article-123/i18n/ms-MY    ← Malaysian translation
 /articles/article-123/i18n/zh-CN    ← Chinese translation
-/articles/article-123/i18n/ta-IN    ← Tamil translation
+/articles/article-123/i18n/ja-JP    ← Japanese translation
 ```
 
 Each i18n document contains:
@@ -507,6 +507,6 @@ Melaka provides a complete solution for Firestore localization:
 1. **Declarative Configuration** — Simple config file defines all behavior
 2. **Automatic Translation** — Firestore triggers keep translations in sync
 3. **AI-Powered** — Leverages modern LLMs for quality translations
-4. **Battle-Tested Pattern** — i18n subcollections used in production at Vespid
+4. **Production-Ready Pattern** — i18n subcollections proven in real apps
 5. **Developer Experience** — CLI for common operations
 6. **Extensible** — Modular architecture for future growth

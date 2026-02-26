@@ -308,11 +308,11 @@ Help the AI understand your content:
 ```typescript
 collections: [
   {
-    path: 'quiz',
+    path: 'recipes',
     prompt: `
-      Educational quiz content for students.
-      Keep tone friendly and encouraging.
-      Translate answer choices clearly.
+      Cooking recipe content.
+      Keep measurements in original units.
+      Translate ingredient names accurately.
     `,
   },
 ],
@@ -324,9 +324,9 @@ Ensure consistent terminology:
 
 ```typescript
 glossary: {
-  'savings': 'simpanan',
-  'investment': 'pelaburan',
-  'Vespid': 'Vespid',  // Don't translate brand
+  'checkout': 'checkout',
+  'cart': 'troli',
+  'Acme Inc': 'Acme Inc',  // Don't translate brand
 }
 ```
 
