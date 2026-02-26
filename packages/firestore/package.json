@@ -1,0 +1,48 @@
+{
+  "name": "@melaka/firestore",
+  "version": "0.0.0",
+  "description": "Firestore adapter and triggers for Melaka",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@melaka/core": "workspace:*",
+    "@melaka/ai": "workspace:*"
+  },
+  "devDependencies": {
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^6.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  },
+  "peerDependencies": {
+    "firebase-admin": ">=11.0.0",
+    "firebase-functions": ">=4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rizahassan/melaka.git",
+    "directory": "packages/firestore"
+  },
+  "license": "MIT"
+}
