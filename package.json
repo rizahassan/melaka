@@ -1,0 +1,47 @@
+{
+  "name": "melaka",
+  "version": "0.0.0",
+  "description": "AI-powered localization for Firebase Firestore",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rizahassan/melaka.git"
+  },
+  "author": "Riza Hassan <riza@vehan.dev>",
+  "license": "MIT",
+  "keywords": [
+    "firebase",
+    "firestore",
+    "i18n",
+    "localization",
+    "translation",
+    "ai",
+    "gemini",
+    "openai",
+    "claude"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo run build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "prettier": "^3.2.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  }
+}
