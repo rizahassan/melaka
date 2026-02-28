@@ -46,5 +46,8 @@
     "url": "https://github.com/rizahassan/melaka.git",
     "directory": "packages/core"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT"
 }

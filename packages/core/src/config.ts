@@ -31,7 +31,7 @@ import type { MelakaConfig, CollectionConfig, AIConfig } from './types';
  * ```
  */
 export async function loadConfig(configPath?: string): Promise<MelakaConfig> {
-  const resolvedPath = resolveConfigPath(configPath);
+  const resolvedPath = await resolveConfigPath(configPath);
 
   // Check if file exists
   const fs = await import('fs/promises');
@@ -74,16 +74,38 @@ export async function loadConfig(configPath?: string): Promise<MelakaConfig> {
 /**
  * Resolve the config file path.
  *
+ * Checks for config files in order: .ts, .js, .mjs
+ *
  * @param configPath - Optional explicit path
  * @returns Resolved absolute path
  */
-function resolveConfigPath(configPath?: string): string {
+async function resolveConfigPath(configPath?: string): Promise<string> {
   if (configPath) {
     return path.resolve(configPath);
   }
 
-  // Default: look for melaka.config.ts in current directory
-  return path.resolve(process.cwd(), 'melaka.config.ts');
+  const fs = await import('fs/promises');
+  const cwd = process.cwd();
+
+  // Check for config files in order of preference
+  const configFiles = [
+    'melaka.config.ts',
+    'melaka.config.js',
+    'melaka.config.mjs',
+  ];
+
+  for (const filename of configFiles) {
+    const fullPath = path.resolve(cwd, filename);
+    try {
+      await fs.access(fullPath);
+      return fullPath;
+    } catch {
+      // File doesn't exist, try next
+    }
+  }
+
+  // Default to .ts for error messages
+  return path.resolve(cwd, 'melaka.config.ts');
 }
 
 // ============================================================================
@@ -208,7 +230,7 @@ export function validateConfig(config: unknown): MelakaConfig {
  * @returns Whether the config file exists
  */
 export async function configExists(configPath?: string): Promise<boolean> {
-  const resolvedPath = resolveConfigPath(configPath);
+  const resolvedPath = await resolveConfigPath(configPath);
   const fs = await import('fs/promises');
   try {
     await fs.access(resolvedPath);

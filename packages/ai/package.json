@@ -38,5 +38,8 @@
     "url": "https://github.com/rizahassan/melaka.git",
     "directory": "packages/ai"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT"
 }

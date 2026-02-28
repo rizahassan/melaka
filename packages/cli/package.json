@@ -37,6 +37,9 @@
     "url": "https://github.com/rizahassan/melaka.git",
     "directory": "packages/cli"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"

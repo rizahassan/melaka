@@ -44,5 +44,8 @@
     "url": "https://github.com/rizahassan/melaka.git",
     "directory": "packages/firestore"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT"
 }

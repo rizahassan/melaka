@@ -2,12 +2,11 @@
   "name": "melaka",
   "version": "0.0.0",
   "description": "AI-powered localization for Firebase Firestore",
-  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/rizahassan/melaka.git"
   },
-  "author": "Riza Hassan <riza@vehan.dev>",
+  "author": "Riza Hassan <vehan.apps@gmail.com>",
   "license": "MIT",
   "keywords": [
     "firebase",
