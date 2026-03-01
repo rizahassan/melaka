@@ -18,7 +18,7 @@ npx melaka <command>
 
 ### `melaka init`
 
-Initialize Melaka in your Firebase project.
+Initialize Melaka in your Firebase project with an interactive step-by-step wizard.
 
 ```bash
 melaka init [options]
@@ -27,18 +27,86 @@ melaka init [options]
 **Options:**
 | Option | Description |
 |--------|-------------|
-| `--typescript` | Generate TypeScript config (default) |
-| `--javascript` | Generate JavaScript config |
-| `--provider <name>` | AI provider: gemini, openai, claude |
+| `-f, --force` | Overwrite existing config file |
+| `-q, --quick` | Use defaults for quick setup |
 
-**Example:**
+**Interactive Steps:**
+
+The command guides you through 5 steps:
+
+1. **Target Languages** — Select which languages to translate to (from common options or enter custom BCP 47 codes)
+2. **AI Provider** — Choose between Gemini, OpenAI, or Claude
+3. **AI Model** — Select the specific model for your provider
+4. **Firebase Region** — Pick your Firebase Functions region
+5. **Collections** — Configure one or more collections with their fields
+
+**Example Session:**
 ```bash
-cd my-firebase-project
-melaka init --provider gemini
+$ melaka init
+
+🌏 Welcome to Melaka!
+   AI-powered localization for Firebase Firestore
+
+   Let's set up your translation configuration step by step.
+   Press Ctrl+C anytime to cancel.
+
+Step 1/5: Target Languages
+Which languages do you want to translate your content into?
+
+? Select target languages:
+  ◯ Malay (Malaysia) (ms-MY)
+  ◉ Chinese (Simplified) (zh-CN)
+  ◉ Japanese (ja-JP)
+  ...
+
+Step 2/5: AI Provider
+? Select AI provider:
+❯ Google Gemini - Cost-effective, fast translations (recommended)
+  OpenAI - High quality, established provider
+  Anthropic Claude - Nuanced, creative translations
+
+Step 3/5: AI Model
+? Select model:
+❯ Gemini 2.5 Flash - Fast & affordable (recommended)
+  Gemini 2.5 Pro - Higher quality
+  
+Step 4/5: Firebase Region
+? Select Firebase region:
+❯ US Central (Iowa)
+  Asia Southeast (Singapore)
+  ...
+
+Step 5/5: Collections
+? Enter collection path: articles
+? Enter fields to translate in "articles": title, content, summary
+? Add a custom prompt for context? Yes
+? Enter context prompt: Blog articles with markdown formatting.
+? Add another collection? No
+
+✓ Created melaka.config.ts
+
+✨ Melaka initialized successfully!
+
+Configuration Summary:
+  Languages:    zh-CN, ja-JP
+  AI Provider:  Google Gemini
+  Model:        gemini-2.5-flash
+  Region:       us-central1
+  Collections:  articles
+
+Next steps:
+  1. Review your config:
+     cat melaka.config.ts
+
+  2. Set up your AI API key:
+     firebase functions:secrets:set GEMINI_API_KEY
+
+  3. Deploy translation triggers:
+     melaka deploy
 ```
 
 **Creates:**
-- `melaka.config.ts` — Configuration file with example collections
+- `melaka.config.ts` — Configuration file customized to your selections
 
 ---
 
