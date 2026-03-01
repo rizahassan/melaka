@@ -4,60 +4,65 @@ This document outlines the planned development phases for Melaka.
 
 ---
 
-## Current Status: 🚧 Planning
+## Current Status: ✅ Phase 1 Complete
 
-We're in the architecture and planning phase. No code has been written yet.
+Phase 1 MVP has been tested and is working. Moving to Phase 2 for production-ready features.
 
 ---
 
-## Phase 1: MVP (v0.1.0)
+## Phase 1: MVP (v0.1.0) ✅ COMPLETE
 
 **Goal:** Minimal viable product that can translate Firestore documents.
 
+**Completed:** March 1, 2026
+
 ### Core Features
 
-- [ ] **@melaka/core**
-  - [ ] Config file parsing (`melaka.config.ts`)
-  - [ ] TypeScript types and interfaces
-  - [ ] Zod schema generation from field types
-  - [ ] Content hashing for change detection
-  - [ ] Glossary handling
+- [x] **@melaka/core**
+  - [x] Config file parsing (`melaka.config.js`/`.ts`)
+  - [x] TypeScript types and interfaces
+  - [x] Zod schema generation from field types
+  - [x] Content hashing for change detection (SHA256)
+  - [x] Glossary handling
 
-- [ ] **@melaka/ai**
-  - [ ] Gemini adapter (primary)
-  - [ ] Translation facade with structured output
-  - [ ] Prompt construction with glossary
+- [x] **@melaka/ai**
+  - [x] Gemini adapter (primary)
+  - [x] Translation facade with structured output
+  - [x] Prompt construction with glossary
 
-- [ ] **@melaka/firestore**
-  - [ ] i18n subcollection read/write
-  - [ ] Cloud Task handler for translations
-  - [ ] Trigger generator for `onDocumentWritten`
-  - [ ] Batch processing with rate limiting
+- [x] **@melaka/firestore**
+  - [x] i18n subcollection read/write
+  - [x] Cloud Task handler for translations
+  - [x] Trigger generator for `onDocumentWritten`
+  - [x] Batch processing with rate limiting
 
-- [ ] **@melaka/cli**
-  - [ ] `melaka init` — Create config file
-  - [ ] `melaka deploy` — Deploy triggers
-  - [ ] `melaka translate` — Manual translation
-  - [ ] `melaka status` — Check progress
+- [x] **@melaka/cli**
+  - [x] `melaka init` — Create config file
+  - [x] `melaka deploy` — Deploy triggers
+  - [x] `melaka translate` — Manual translation
+  - [x] `melaka status` — Check progress
+  - [x] `melaka validate` — Config validation
 
 ### Documentation
 
-- [ ] README with quick start
-- [ ] Architecture documentation
-- [ ] Configuration reference
-- [ ] Basic examples
+- [x] README with quick start
+- [x] Architecture documentation
+- [x] Configuration reference
+- [x] AI providers documentation
+- [x] CLI documentation
+- [x] Integration guide
 
-### Milestone
+### Milestone ✅
 
-✅ MVP is complete when you can:
+MVP is complete! You can:
 1. Run `melaka init` in a Firebase project
-2. Configure collections in `melaka.config.ts`
-3. Run `melaka deploy` to deploy triggers
-4. See automatic translations in `i18n` subcollections
+2. Configure collections in `melaka.config.js`
+3. Run `melaka deploy` to generate triggers
+4. Deploy to Firebase and see automatic translations in `i18n` subcollections
 
 ---
 
-## Phase 2: Production Ready (v0.2.0)
+## Phase 2: Production Ready (v0.2.0) 🚧 IN PROGRESS
 
 **Goal:** Ready for production use with reliability features.
 
@@ -66,32 +71,43 @@ We're in the architecture and planning phase. No code has been written yet.
 - [ ] **Additional AI Providers**
   - [ ] OpenAI adapter
   - [ ] Claude adapter
+  - [ ] Provider switching/fallback
 
 - [ ] **Reliability**
   - [ ] Retry logic with exponential backoff
   - [ ] Error recording and status tracking
-  - [ ] `melaka retry` command
+  - [ ] `melaka retry` command for failed translations
 
 - [ ] **Monitoring**
-  - [ ] Detailed status output
-  - [ ] Progress tracking
-  - [ ] JSON output for CI/CD
+  - [ ] Detailed status output with statistics
+  - [ ] Progress tracking per collection/locale
+  - [ ] JSON output for CI/CD integration
 
 - [ ] **CLI Improvements**
-  - [ ] `melaka validate` — Config validation
-  - [ ] `melaka cleanup` — Remove old translations
+  - [ ] `melaka cleanup` — Remove orphaned translations
   - [ ] `--dry-run` flag for all commands
-  - [ ] Verbose and quiet modes
+  - [ ] Verbose (`-v`) and quiet (`-q`) modes
+  - [ ] Better error messages and diagnostics
+
+- [ ] **Testing**
+  - [ ] Unit tests for core packages
+  - [ ] Integration tests with Firebase emulator
+  - [ ] CI/CD pipeline setup
 
 ### Documentation
 
-- [ ] AI provider comparison and setup
+- [ ] AI provider comparison and setup guide
 - [ ] Troubleshooting guide
-- [ ] CI/CD integration guide
+- [ ] CI/CD integration examples
+- [ ] Firebase emulator testing guide
 
 ### Milestone
 
-✅ Phase 2 is complete when Melaka can be used in production with confidence.
+Phase 2 is complete when:
+1. OpenAI and Claude adapters are available
+2. Failed translations can be retried automatically
+3. Comprehensive error handling is in place
+4. Unit and integration tests provide confidence
 
 ---
 
