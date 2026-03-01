@@ -12,6 +12,7 @@ import { translateCommand } from './commands/translate';
 import { statusCommand } from './commands/status';
 import { validateCommand } from './commands/validate';
 import { retryCommand } from './commands/retry';
+import { cleanupCommand } from './commands/cleanup';
 
 const program = new Command();
 
@@ -27,6 +28,7 @@ program.addCommand(translateCommand);
 program.addCommand(statusCommand);
 program.addCommand(validateCommand);
 program.addCommand(retryCommand);
+program.addCommand(cleanupCommand);
 
 // Parse arguments
 program.parse();
