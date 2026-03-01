@@ -18,12 +18,22 @@ export type {
 export {
   GeminiProvider,
   createGeminiProvider,
+  OpenAIProvider,
+  createOpenAIProvider,
+  ClaudeProvider,
+  createClaudeProvider,
 } from './providers';
 
 // Facade
 export {
   TranslationFacade,
   createTranslationFacade,
+  createProvider,
+} from './facade';
+
+export type {
+  RetryConfig,
+  TranslationResponseWithRetry,
 } from './facade';
 
 // Prompt utilities

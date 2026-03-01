@@ -3,7 +3,5 @@
  */
 
 export { GeminiProvider, createGeminiProvider } from './gemini';
-
-// Future providers:
-// export { OpenAIProvider, createOpenAIProvider } from './openai';
-// export { ClaudeProvider, createClaudeProvider } from './claude';
+export { OpenAIProvider, createOpenAIProvider } from './openai';
+export { ClaudeProvider, createClaudeProvider } from './claude';

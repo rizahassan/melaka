@@ -243,6 +243,70 @@ export default defineConfig({
 
 ## Error Handling
 
+### Retry Logic
+
+Melaka automatically retries failed translations with exponential backoff:
+
+- **Max retries:** 3 attempts
+- **Initial delay:** 1 second
+- **Backoff multiplier:** 2x per retry
+- **Max delay:** 30 seconds
+- **Jitter:** Random 0-25% added to prevent thundering herd
+
+Retryable errors (automatically retried):
+- Rate limits (429, "too many requests")
+- Server errors (500, 502, 503, 504)
+- Timeouts and network issues
+- "Temporarily unavailable" responses
+
+Non-retryable errors (fail immediately):
+- Invalid API key
+- Model not found
+- Schema validation failures
+- Context length exceeded
+
+### Provider Fallback
+
+Configure fallback providers for high availability:
+
+```typescript
+import { createTranslationFacade } from '@melaka/ai';
+
+const facade = createTranslationFacade(primaryConfig, {
+  maxRetries: 3,
+  initialDelayMs: 1000,
+});
+
+// Use fallback on failure
+const result = await facade.translateWithFallback(
+  content,
+  schema,
+  options,
+  [openaiConfig, claudeConfig] // Fallback providers
+);
+```
+
+### Retrying Failed Translations
+
+Use the CLI to retry failed translations:
+
+```bash
+# Show all failed translations
+melaka retry --dry-run
+
+# Retry all failed translations
+melaka retry
+
+# Retry specific collection
+melaka retry --collection articles
+
+# Retry specific language
+melaka retry --language ms-MY
+
+# Verbose output
+melaka retry --verbose
+```
+
 ### Rate Limiting
 
 All providers have rate limits. Melaka handles this with:

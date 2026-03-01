@@ -11,13 +11,14 @@ import { deployCommand } from './commands/deploy';
 import { translateCommand } from './commands/translate';
 import { statusCommand } from './commands/status';
 import { validateCommand } from './commands/validate';
+import { retryCommand } from './commands/retry';
 
 const program = new Command();
 
 program
   .name('melaka')
   .description('AI-powered localization for Firebase Firestore')
-  .version('0.0.0');
+  .version('0.1.0');
 
 // Register commands
 program.addCommand(initCommand);
@@ -25,6 +26,7 @@ program.addCommand(deployCommand);
 program.addCommand(translateCommand);
 program.addCommand(statusCommand);
 program.addCommand(validateCommand);
+program.addCommand(retryCommand);
 
 // Parse arguments
 program.parse();
