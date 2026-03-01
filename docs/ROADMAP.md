@@ -78,25 +78,26 @@ MVP is complete! You can:
   - [x] Error recording and status tracking
   - [x] `melaka retry` command for failed translations
 
-- [ ] **Monitoring**
-  - [ ] Detailed status output with statistics
-  - [ ] Progress tracking per collection/locale
-  - [ ] JSON output for CI/CD integration
+- [x] **Monitoring**
+  - [x] Detailed status output with statistics (`--live` flag)
+  - [x] Progress tracking per collection/locale
+  - [x] JSON output for CI/CD integration (`--json` flag)
 
-- [ ] **CLI Improvements**
-  - [ ] `melaka cleanup` — Remove orphaned translations
-  - [ ] `--dry-run` flag for all commands
-  - [ ] Verbose (`-v`) and quiet (`-q`) modes
-  - [ ] Better error messages and diagnostics
+- [x] **CLI Improvements**
+  - [x] `melaka cleanup` — Remove orphaned translations
+  - [x] `--dry-run` flag for cleanup and retry commands
+  - [x] Verbose (`-v`) mode for all commands
+  - [x] Better error messages and diagnostics
 
-- [ ] **Testing**
-  - [ ] Unit tests for core packages
+- [x] **Testing**
+  - [x] Unit tests for core packages (48 tests)
+  - [x] Vitest with coverage support
   - [ ] Integration tests with Firebase emulator
   - [ ] CI/CD pipeline setup
 
 ### Documentation
 
-- [ ] AI provider comparison and setup guide
+- [x] AI provider comparison and setup guide
 - [ ] Troubleshooting guide
 - [ ] CI/CD integration examples
 - [ ] Firebase emulator testing guide
@@ -104,10 +105,10 @@ MVP is complete! You can:
 ### Milestone
 
 Phase 2 is complete when:
-1. OpenAI and Claude adapters are available
-2. Failed translations can be retried automatically
-3. Comprehensive error handling is in place
-4. Unit and integration tests provide confidence
+1. ✅ OpenAI and Claude adapters are available
+2. ✅ Failed translations can be retried automatically
+3. ✅ Comprehensive error handling is in place
+4. ⏳ Unit and integration tests provide confidence
 
 ---
 
