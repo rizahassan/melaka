@@ -68,15 +68,15 @@ MVP is complete! You can:
 
 ### Features
 
-- [ ] **Additional AI Providers**
-  - [ ] OpenAI adapter
-  - [ ] Claude adapter
-  - [ ] Provider switching/fallback
+- [x] **Additional AI Providers**
+  - [x] OpenAI adapter
+  - [x] Claude adapter
+  - [x] Provider switching/fallback
 
-- [ ] **Reliability**
-  - [ ] Retry logic with exponential backoff
-  - [ ] Error recording and status tracking
-  - [ ] `melaka retry` command for failed translations
+- [x] **Reliability**
+  - [x] Retry logic with exponential backoff
+  - [x] Error recording and status tracking
+  - [x] `melaka retry` command for failed translations
 
 - [ ] **Monitoring**
   - [ ] Detailed status output with statistics
