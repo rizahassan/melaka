@@ -16,7 +16,7 @@ export default defineConfig({
   
   ai: {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
   },
   
   collections: [
@@ -40,7 +40,7 @@ export default defineConfig({
   // AI provider configuration
   ai: {
     provider: 'gemini',           // 'gemini' | 'openai' | 'claude'
-    model: 'gemini-2.5-flash',    // Model name
+    model: 'gemini-3-flash-preview',    // Model name
     temperature: 0.3,             // 0-1, lower = more consistent
     apiKeySecret: 'GEMINI_API_KEY', // Firebase secret name
   },
@@ -116,7 +116,7 @@ interface AIConfig {
 #### Supported Models
 
 **Gemini (Google):**
-- `gemini-2.5-flash` — Fast, cost-effective (recommended)
+- `gemini-3-flash-preview` — Fast, cost-effective (recommended)
 - `gemini-2.5-pro` — Higher quality, slower
 - `gemini-2.0-flash` — Previous generation
 
@@ -312,7 +312,7 @@ import { defineConfig } from 'melaka';
 
 export default defineConfig({
   languages: ['ms-MY'],
-  ai: { provider: 'gemini', model: 'gemini-2.5-flash' },
+  ai: { provider: 'gemini', model: 'gemini-3-flash-preview' },
   collections: [
     { path: 'articles', fields: ['title', 'content'] },
   ],
@@ -329,7 +329,7 @@ export default defineConfig({
   
   ai: {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
     temperature: 0.3,
   },
   
@@ -362,7 +362,7 @@ import { defineConfig } from 'melaka';
 
 export default defineConfig({
   languages: ['ms-MY'],
-  ai: { provider: 'gemini', model: 'gemini-2.5-flash' },
+  ai: { provider: 'gemini', model: 'gemini-3-flash-preview' },
   
   collections: [
     {

@@ -61,7 +61,7 @@ export interface AIConfig {
 
   /**
    * Model name/identifier.
-   * @example 'gemini-2.5-flash'
+   * @example 'gemini-3-flash-preview'
    * @example 'gpt-4o-mini'
    * @example 'claude-sonnet-4-20250514'
    */
@@ -469,7 +469,7 @@ export interface TranslationRequest<TInput, TOutput> {
  * 
  * export default defineConfig({
  *   languages: ['ms-MY'],
- *   ai: { provider: 'gemini', model: 'gemini-2.5-flash' },
+ *   ai: { provider: 'gemini', model: 'gemini-3-flash-preview' },
  *   collections: [
  *     { path: 'articles', fields: ['title', 'content'] },
  *   ],

@@ -90,7 +90,7 @@ Step 5/5: Collections
 Configuration Summary:
   Languages:    zh-CN, ja-JP
   AI Provider:  Google Gemini
-  Model:        gemini-2.5-flash
+  Model:        gemini-3-flash-preview
   Region:       us-central1
   Collections:  articles
 

@@ -136,7 +136,7 @@ Each i18n document contains:
   _melaka: {
     source_hash: "abc123...",      // Hash of source content
     translated_at: Timestamp,      // When translation occurred
-    model: "gemini-2.5-flash",     // AI model used
+    model: "gemini-3-flash-preview",     // AI model used
     status: "completed",           // completed | failed | pending
     reviewed: false,               // Human review flag
     error?: string                 // Error message if failed
@@ -187,7 +187,7 @@ export default defineConfig({
   // AI provider settings
   ai: {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
     temperature: 0.3,
   },
   

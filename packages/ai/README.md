@@ -16,7 +16,7 @@ import { z } from 'zod';
 
 const facade = createTranslationFacade({
   provider: 'gemini',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3-flash-preview',
   apiKey: process.env.GEMINI_API_KEY,
 });
 
@@ -34,7 +34,7 @@ if (result.success) {
 
 ## Supported Providers
 
-- **Gemini** (Google) - `gemini-2.5-flash`, `gemini-2.5-pro`
+- **Gemini** (Google) - `gemini-3-flash-preview`, `gemini-2.5-pro`
 - **OpenAI** - `gpt-4o`, `gpt-4o-mini` (Phase 2)
 - **Claude** (Anthropic) - `claude-sonnet-4-20250514` (Phase 2)
 

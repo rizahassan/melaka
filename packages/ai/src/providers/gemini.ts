@@ -34,7 +34,7 @@ interface GeminiResponse {
  * ```typescript
  * const provider = new GeminiProvider({
  *   apiKey: process.env.GEMINI_API_KEY,
- *   model: 'gemini-2.5-flash',
+ *   model: 'gemini-3-flash-preview',
  * });
  *
  * const result = await provider.translate(

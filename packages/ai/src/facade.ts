@@ -16,7 +16,7 @@ import { GeminiProvider } from './providers/gemini';
  * ```typescript
  * const facade = createTranslationFacade({
  *   provider: 'gemini',
- *   model: 'gemini-2.5-flash',
+ *   model: 'gemini-3-flash-preview',
  *   apiKey: process.env.GEMINI_API_KEY,
  * });
  *

@@ -6,7 +6,7 @@ Melaka supports multiple AI providers for translation. This document covers setu
 
 | Provider | Models | Best For |
 |----------|--------|----------|
-| **Gemini** | gemini-2.5-flash, gemini-2.5-pro | Cost-effective, fast translations |
+| **Gemini** | gemini-3-flash-preview, gemini-2.5-pro | Cost-effective, fast translations |
 | **OpenAI** | gpt-4o, gpt-4o-mini | High quality, established |
 | **Claude** | claude-sonnet-4-20250514, claude-opus-4-20250514 | Nuanced, creative translations |
 
@@ -34,7 +34,7 @@ import { defineConfig } from 'melaka';
 export default defineConfig({
   ai: {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',  // Recommended
+    model: 'gemini-3-flash-preview',  // Recommended
     temperature: 0.3,
     apiKeySecret: 'GEMINI_API_KEY',
   },
@@ -46,13 +46,13 @@ export default defineConfig({
 
 | Model | Speed | Quality | Cost |
 |-------|-------|---------|------|
-| `gemini-2.5-flash` | ⚡⚡⚡ | ★★★★ | $ |
+| `gemini-3-flash-preview` | ⚡⚡⚡ | ★★★★ | $ |
 | `gemini-2.5-pro` | ⚡⚡ | ★★★★★ | $$ |
 | `gemini-2.0-flash` | ⚡⚡⚡ | ★★★ | $ |
 
 ### Recommendation
 
-Use **`gemini-2.5-flash`** for most translation tasks. It's fast, cost-effective, and handles structured output well.
+Use **`gemini-3-flash-preview`** for most translation tasks. It's fast, cost-effective, and handles structured output well.
 
 ---
 
@@ -160,7 +160,7 @@ For general content translation, all providers perform well. Differences appear 
 
 | Provider | Model | Cost per 1M tokens |
 |----------|-------|-------------------|
-| Gemini | gemini-2.5-flash | ~$0.075 |
+| Gemini | gemini-3-flash-preview | ~$0.075 |
 | OpenAI | gpt-4o-mini | ~$0.15 |
 | OpenAI | gpt-4o | ~$2.50 |
 | Claude | claude-sonnet-4-20250514 | ~$3.00 |
@@ -169,7 +169,7 @@ For general content translation, all providers perform well. Differences appear 
 
 | Provider | Model | ~Tokens/sec |
 |----------|-------|-------------|
-| Gemini | gemini-2.5-flash | 150+ |
+| Gemini | gemini-3-flash-preview | 150+ |
 | OpenAI | gpt-4o-mini | 100+ |
 | OpenAI | gpt-4o | 50+ |
 | Claude | claude-sonnet-4-20250514 | 80+ |
@@ -187,7 +187,7 @@ export default defineConfig({
   // Default provider
   ai: {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
   },
   
   collections: [
@@ -231,7 +231,7 @@ dotenv.config({ path: '.env.local' });
 export default defineConfig({
   ai: {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
     apiKey: process.env.GEMINI_API_KEY,  // For local dev
     apiKeySecret: 'GEMINI_API_KEY',       // For production
   },
@@ -287,7 +287,7 @@ For most use cases, Gemini offers the best cost/performance ratio:
 ```typescript
 ai: {
   provider: 'gemini',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3-flash-preview',
 }
 ```
 

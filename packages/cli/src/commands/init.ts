@@ -32,7 +32,7 @@ const AI_PROVIDERS = {
     name: 'Google Gemini',
     description: 'Cost-effective, fast translations (recommended)',
     models: [
-      { value: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash - Fast & affordable (recommended)' },
+      { value: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview - Fast & affordable (recommended)' },
       { value: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro - Higher quality' },
       { value: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash - Legacy fast model' },
     ],

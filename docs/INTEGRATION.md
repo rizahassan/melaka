@@ -36,7 +36,7 @@ export default defineConfig({
   
   ai: {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
     apiKeySecret: 'GEMINI_API_KEY',
   },
   
@@ -61,7 +61,7 @@ export default defineConfig({
   
   ai: {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
     apiKeySecret: 'GEMINI_API_KEY',
   },
   
@@ -254,7 +254,7 @@ Translations are stored as subcollections under each document:
   _melaka: {
     source_hash: "a1b2c3d4...",
     translated_at: Timestamp,
-    model: "gemini-2.5-flash",
+    model: "gemini-3-flash-preview",
     status: "completed",
     reviewed: false,
   }

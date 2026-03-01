@@ -19,7 +19,7 @@ export default defineConfig({
   languages: ['ms-MY', 'zh-CN'],
   ai: {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
   },
   collections: [
     {
