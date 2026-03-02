@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { resolve } from 'path';
 
 export default defineConfig({
   test: {
@@ -20,6 +21,13 @@ export default defineConfig({
         'packages/*/src/**/index.ts',
         'packages/cli/**', // CLI has integration tests instead
       ],
+    },
+  },
+  resolve: {
+    alias: {
+      '@melaka/ai': resolve(__dirname, './packages/ai/src'),
+      '@melaka/core': resolve(__dirname, './packages/core/src'),
+      '@melaka/firestore': resolve(__dirname, './packages/firestore/src'),
     },
   },
 });
