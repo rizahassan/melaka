@@ -214,91 +214,141 @@ Phase 2 is complete when:
 
 ## Phase 6: Melaka Cloud (v1.1.0)
 
-**Goal:** Managed SaaS with AI proxy for monetization.
+**Goal:** Fully managed SaaS — customers just connect Firebase, we handle everything.
 
 ### Business Model
-- **Free:** Self-hosted with own AI keys (current)
-- **Pro ($29/mo):** Melaka Cloud proxy + dashboard
-- **Enterprise ($299/mo):** Everything + SSO + translation memory
+- **Free:** Self-hosted with own AI keys (current SDK)
+- **Pro ($29/mo):** Fully managed translations + dashboard
+- **Enterprise ($299/mo):** Everything + SSO + translation memory + priority support
+
+### Customer Experience
+1. Sign up at melaka.dev
+2. Click "Connect Firebase" (OAuth)
+3. Select collections to translate
+4. Configure languages
+5. Done! Translations happen automatically.
+
+**No Cloud Functions. No deployment. No AI keys.**
 
 ### Features
 
 - [ ] **OAuth Integration**
   - [ ] "Connect with Google" in dashboard
-  - [ ] Grant Firestore read/write access
-  - [ ] Secure token storage
-  - [ ] Permission scoping (specific collections only)
+  - [ ] Request Firestore read/write permissions
+  - [ ] Secure token storage (encrypted)
+  - [ ] Per-collection permission scoping
+  - [ ] Easy disconnect/revoke
 
-- [ ] **Melaka AI Provider**
-  - [ ] New `provider: 'melaka'` option in config
-  - [ ] Proxies to Gemini/OpenAI/Claude on backend
-  - [ ] User doesn't need AI API keys
-  - [ ] Same SDK, zero code changes
+- [ ] **Firestore Listener Service**
+  - [ ] Watches customer's Firestore collections
+  - [ ] Detects document creates/updates
+  - [ ] Queues translation jobs
+  - [ ] Writes translations back to i18n subcollections
+  - [ ] Handles retries and failures
 
-- [ ] **Melaka API Service**
-  - [ ] Node.js / Cloudflare Workers backend
-  - [ ] Firestore listener service (watches user's collections)
-  - [ ] AI request proxy with caching
-  - [ ] Rate limiting and abuse protection
+- [ ] **AI Translation Engine**
+  - [ ] Multi-provider support (Gemini, OpenAI, Claude)
+  - [ ] Automatic provider fallback
+  - [ ] Customer doesn't need AI API keys
+  - [ ] Melaka handles all AI costs (built into pricing)
 
-- [ ] **Translation Memory (Cloud)**
+- [ ] **Translation Memory**
   - [ ] Cache translations server-side
-  - [ ] Similarity matching to reuse translations
-  - [ ] Cost savings passed to customers
-  - [ ] Cross-project memory (opt-in)
+  - [ ] Similarity matching (fuzzy reuse)
+  - [ ] Significant cost savings
+  - [ ] Cross-project memory (opt-in for enterprise)
 
 - [ ] **Usage Metering & Billing**
-  - [ ] Track translations per user
-  - [ ] Stripe usage-based billing
-  - [ ] Dashboard usage analytics
-  - [ ] Overage alerts
+  - [ ] Track translations per customer
+  - [ ] Stripe subscription + usage billing
+  - [ ] Free tier limits (e.g., 1,000 translations/month)
+  - [ ] Usage dashboard with cost breakdown
+  - [ ] Overage alerts and notifications
 
 - [ ] **Dashboard Enhancements**
   - [ ] Project connection wizard
-  - [ ] Usage & cost dashboard
+  - [ ] Collection selector with preview
+  - [ ] Real-time translation status
+  - [ ] Usage & cost analytics
   - [ ] Billing management (Stripe portal)
-  - [ ] Team invitations
+  - [ ] Team invitations and roles
 
 ### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     User's Firebase Project                  │
-│  ┌─────────────┐    ┌─────────────────────────────────────┐ │
-│  │  Firestore  │◄───│  Cloud Functions (@melaka/firestore)│ │
-│  │   (data)    │    │  provider: 'melaka'                 │ │
-│  └─────────────┘    └──────────────┬──────────────────────┘ │
-└────────────────────────────────────┼────────────────────────┘
-                                     │ MELAKA_API_KEY
-                                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Melaka Cloud                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │  Melaka API  │  │ Translation  │  │   Stripe     │       │
-│  │   Service    │  │    Memory    │  │   Billing    │       │
-│  └──────┬───────┘  └──────────────┘  └──────────────┘       │
-│         │                                                    │
-│         ▼                                                    │
-│  ┌──────────────────────────────────────────────────┐       │
-│  │              AI Provider Proxy                    │       │
-│  │   Gemini  │  OpenAI  │  Claude  │  Custom        │       │
-│  └──────────────────────────────────────────────────┘       │
+│              Customer's Firebase Project                     │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │                    Firestore                         │    │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐           │    │
+│  │  │ articles │  │  quiz    │  │ lessons  │  ...      │    │
+│  │  │  └─i18n  │  │  └─i18n  │  │  └─i18n  │           │    │
+│  │  └──────────┘  └──────────┘  └──────────┘           │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                           ▲                                  │
+│                           │ Read/Write (OAuth)               │
+└───────────────────────────┼─────────────────────────────────┘
+                            │
+┌───────────────────────────┼─────────────────────────────────┐
+│                     Melaka Cloud                             │
+│                           │                                  │
+│  ┌────────────────────────▼────────────────────────────┐    │
+│  │              Firestore Listener Service              │    │
+│  │  • Watches customer collections                      │    │
+│  │  • Detects changes via onSnapshot                    │    │
+│  │  • Queues translation jobs                           │    │
+│  └────────────────────────┬────────────────────────────┘    │
+│                           │                                  │
+│  ┌────────────────────────▼────────────────────────────┐    │
+│  │              Translation Engine                      │    │
+│  │  ┌──────────┐  ┌──────────────┐  ┌──────────────┐   │    │
+│  │  │ Job Queue│  │ Trans Memory │  │  AI Providers│   │    │
+│  │  │ (Redis)  │  │  (Postgres)  │  │ Gemini/GPT/  │   │    │
+│  │  │          │  │              │  │ Claude       │   │    │
+│  │  └──────────┘  └──────────────┘  └──────────────┘   │    │
+│  └────────────────────────┬────────────────────────────┘    │
+│                           │                                  │
+│  ┌────────────────────────▼────────────────────────────┐    │
+│  │              Dashboard & API                         │    │
+│  │  • OAuth management        • Usage tracking          │    │
+│  │  • Translation review      • Stripe billing          │    │
+│  │  • Analytics               • Team management         │    │
+│  └─────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Migration Path (Zero Breaking Changes)
-```ts
-// Before (self-hosted, free)
-ai: {
-  provider: 'gemini',
-  apiKey: process.env.GEMINI_API_KEY,
-}
+### Infrastructure Components
 
-// After (Melaka Cloud, paid)
-ai: {
-  provider: 'melaka',
-  apiKey: process.env.MELAKA_API_KEY, // Get from dashboard
-}
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Dashboard | Next.js (Vercel) | UI + API routes |
+| Listener Service | Node.js (Cloud Run / Railway) | Watch customer Firestore |
+| Job Queue | Redis (Upstash) | Translation job management |
+| Translation Memory | PostgreSQL (Supabase) | Cache + similarity matching |
+| Auth | Firebase Auth | User management |
+| Billing | Stripe | Subscriptions + usage billing |
+
+### Security
+
+- OAuth tokens encrypted at rest
+- Minimal permissions (only requested collections)
+- Audit logging for all operations
+- Customer can revoke access anytime
+- SOC 2 compliance (future)
+
+### Migration Path
+
+**Self-hosted users can keep using the SDK for free.**
+Melaka Cloud is an optional paid tier, not a replacement.
+
+```
+Self-hosted (Free)              Melaka Cloud (Paid)
+├── @melaka/core                ├── Just connect Firebase
+├── @melaka/ai                  ├── No code deployment
+├── @melaka/firestore           ├── No AI keys needed
+├── @melaka/cli                 └── We handle everything
+└── Your own AI keys
 ```
 
 ---
