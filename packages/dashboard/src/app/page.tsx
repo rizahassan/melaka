@@ -1,29 +1,15 @@
+'use client';
+
 import Link from 'next/link';
+import { Header } from '@/components/Header';
+import { useAuth } from '@/lib/auth';
 
 export default function HomePage() {
+  const { user, loading } = useAuth();
+
   return (
     <main className="min-h-screen">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-              🌏 Melaka
-            </h1>
-            <nav className="flex gap-4">
-              <Link href="/translations" className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-                Translations
-              </Link>
-              <Link href="/analytics" className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-                Analytics
-              </Link>
-              <Link href="/settings" className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-                Settings
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero */}
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
@@ -91,15 +77,44 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* CTA for non-authenticated users */}
+        {!loading && !user && (
+          <div className="mt-16 text-center">
+            <div className="inline-flex flex-col sm:flex-row gap-4">
+              <Link
+                href="/login"
+                className="px-8 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
+              >
+                Get Started Free
+              </Link>
+              <Link
+                href="/pricing"
+                className="px-8 py-3 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                View Pricing
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Recent Activity */}
         <div className="mt-12">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
             Recent Activity
           </h3>
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              Connect to Firebase to see recent translation activity
-            </p>
+            {user ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                Connect to Firebase to see recent translation activity
+              </p>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                <Link href="/login" className="text-indigo-600 hover:text-indigo-500">
+                  Sign in
+                </Link>{' '}
+                to view your translation activity
+              </p>
+            )}
           </div>
         </div>
       </div>

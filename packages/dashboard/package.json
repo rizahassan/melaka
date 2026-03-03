@@ -14,6 +14,8 @@
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "firebase": "^10.14.0",
+    "@stripe/stripe-js": "^4.0.0",
+    "stripe": "^17.0.0",
     "@melaka/core": "workspace:*"
   },
   "devDependencies": {
