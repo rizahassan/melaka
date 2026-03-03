@@ -1,89 +1,115 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+
+function MelakaLogo() {
+  return (
+    <Link href="/" className="flex items-center gap-2">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="14" cy="14" r="12" stroke="url(#logo-gradient)" strokeWidth="2.5" fill="none" />
+        <path d="M9 18V10l5 4 5-4v8" stroke="url(#logo-gradient)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <defs>
+          <linearGradient id="logo-gradient" x1="14" y1="0" x2="14" y2="28" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#1a3a8a" />
+            <stop offset="0.5" stopColor="#d4a017" />
+            <stop stopColor="#cc3232" offset="1" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <span className="text-gradient-logo text-xl font-bold tracking-tight">
+        Melaka
+      </span>
+    </Link>
+  );
+}
+
+const navLinks = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/translations', label: 'Translations' },
+  { href: '/analytics', label: 'Analytics' },
+  { href: '/pricing', label: 'Pricing' },
+];
 
 export function Header() {
   const { user, loading, signOut } = useAuth();
+  const pathname = usePathname();
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow">
-      <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="text-2xl font-bold text-indigo-600">
-              🌏 Melaka
-            </Link>
-            <nav className="hidden md:flex gap-6">
-              <Link
-                href="/translations"
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-              >
-                Translations
-              </Link>
-              <Link
-                href="/analytics"
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-              >
-                Analytics
-              </Link>
-              <Link
-                href="/pricing"
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-              >
-                Pricing
-              </Link>
-            </nav>
-          </div>
+    <header className="border-b border-[rgba(255,255,255,0.06)]">
+      <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
+        {/* Left: Logo + Nav */}
+        <div className="flex items-center gap-8">
+          <MelakaLogo />
+          <nav className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-3 py-1.5 rounded-xl text-base transition-colors ${
+                    isActive
+                      ? 'bg-[rgba(255,255,255,0.08)] text-white'
+                      : 'text-[#8090b8] hover:text-white'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
-          <div className="flex items-center gap-4">
-            {loading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
-            ) : user ? (
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/settings"
-                  className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+        {/* Right: Auth */}
+        <div className="flex items-center gap-3">
+          {loading ? (
+            <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse" />
+          ) : user ? (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/settings"
+                className="text-[#8090b8] hover:text-white text-base transition-colors px-3 py-1.5"
+              >
+                Settings
+              </Link>
+              <div className="flex items-center gap-2">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'User'}
+                    className="w-8 h-8 rounded-full ring-1 ring-white/10"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] flex items-center justify-center text-white text-sm font-medium">
+                    {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                  </div>
+                )}
+                <button
+                  onClick={() => signOut()}
+                  className="text-sm text-[#5a6a8a] hover:text-white transition-colors"
                 >
-                  Settings
-                </Link>
-                <div className="flex items-center gap-2">
-                  {user.photoURL ? (
-                    <img
-                      src={user.photoURL}
-                      alt={user.displayName || 'User'}
-                      className="w-8 h-8 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-medium">
-                      {(user.displayName || user.email || 'U')[0].toUpperCase()}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => signOut()}
-                    className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  >
-                    Sign out
-                  </button>
-                </div>
+                  Sign out
+                </button>
               </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/login"
-                  className="text-gray-600 hover:text-gray-900 dark:text-gray-300"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/login"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                >
-                  Get Started
-                </Link>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="text-[#8090b8] hover:text-white text-base transition-colors px-3 py-1.5"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/login"
+                className="px-4 py-2 bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] text-white rounded-xl text-base shadow-[0_10px_15px_rgba(26,58,138,0.2),0_4px_6px_rgba(26,58,138,0.2)] hover:shadow-[0_10px_20px_rgba(26,58,138,0.35)] transition-shadow"
+              >
+                Get Started
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>
