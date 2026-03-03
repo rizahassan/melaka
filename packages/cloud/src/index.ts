@@ -36,3 +36,17 @@ export {
   type OAuthTokens,
   type OAuthConfig,
 } from './oauth-manager.js';
+
+// Database
+export {
+  MelakaDatabase,
+  encrypt,
+  decrypt,
+  type DatabaseConfig,
+  type ProjectRow,
+  type ProjectConfig as DbProjectConfig,
+  type CollectionConfig,
+  type OAuthTokenRow,
+  type TranslationJobRow,
+  type UsageRecordRow,
+} from './db/index.js';

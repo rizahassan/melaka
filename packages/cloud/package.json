@@ -12,8 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@melaka/core": "workspace:*",
     "@melaka/ai": "workspace:*",
+    "@melaka/core": "workspace:*",
+    "@supabase/supabase-js": "^2.98.0",
     "firebase-admin": "^12.0.0",
     "google-auth-library": "^9.0.0",
     "ioredis": "^5.4.0"

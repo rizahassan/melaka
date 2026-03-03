@@ -16,7 +16,8 @@
     "firebase": "^10.14.0",
     "@stripe/stripe-js": "^4.0.0",
     "stripe": "^17.0.0",
-    "@melaka/core": "workspace:*"
+    "@melaka/core": "workspace:*",
+    "@melaka/cloud": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
