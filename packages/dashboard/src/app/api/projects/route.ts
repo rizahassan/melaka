@@ -1,19 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MelakaDatabase, type DbProjectConfig } from '@melaka/cloud';
+import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { MelakaFirestoreDatabase, type ProjectConfig } from '@melaka/cloud/dashboard';
 
-// Initialize database (in production, use environment variables)
-const db = process.env.SUPABASE_URL && process.env.SUPABASE_KEY && process.env.ENCRYPTION_KEY
-  ? new MelakaDatabase({
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseKey: process.env.SUPABASE_KEY,
-      encryptionKey: process.env.ENCRYPTION_KEY,
-    })
-  : null;
+// Initialize Firebase Admin (singleton)
+let firebaseApp: App;
+function getFirebaseApp(): App {
+  if (getApps().length === 0) {
+    // In production, use service account from env
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
+      : undefined;
+
+    firebaseApp = initializeApp({
+      credential: serviceAccount ? cert(serviceAccount) : undefined,
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    });
+  }
+  return firebaseApp || getApps()[0];
+}
+
+// Initialize database
+function getDatabase(): MelakaFirestoreDatabase | null {
+  if (!process.env.ENCRYPTION_KEY) return null;
+  
+  const app = getFirebaseApp();
+  const firestore = getFirestore(app);
+  
+  return new MelakaFirestoreDatabase({
+    firestore,
+    encryptionKey: process.env.ENCRYPTION_KEY,
+  });
+}
 
 /**
  * GET /api/projects - List projects for a user
  */
 export async function GET(request: NextRequest) {
+  const db = getDatabase();
   if (!db) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
@@ -39,6 +63,7 @@ export async function GET(request: NextRequest) {
  * POST /api/projects - Create a new project
  */
 export async function POST(request: NextRequest) {
+  const db = getDatabase();
   if (!db) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
@@ -53,7 +78,7 @@ export async function POST(request: NextRequest) {
     const { firebaseProjectId, name, config } = body as {
       firebaseProjectId: string;
       name: string;
-      config?: Partial<DbProjectConfig>;
+      config?: Partial<ProjectConfig>;
     };
 
     if (!firebaseProjectId || !name) {
@@ -63,7 +88,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const defaultConfig: DbProjectConfig = {
+    const defaultConfig: ProjectConfig = {
       collections: [],
       sourceLocale: 'en',
       targetLocales: [],

@@ -4,157 +4,98 @@ Fully managed translation service backend for Melaka Cloud.
 
 ## Overview
 
-This package provides the server-side infrastructure for Melaka's fully managed translation service. It watches customer Firestore collections via OAuth and translates documents automatically.
+This package provides the server-side infrastructure for Melaka's fully managed translation service. Supports two deployment options:
 
-## Components
+- **GCP Edition**: Firestore + Cloud Tasks (recommended for Firebase projects)
+- **Standalone Edition**: Supabase + Redis (for non-GCP deployments)
 
-### MelakaCloudService
-Main orchestrator that ties everything together.
+## GCP Edition (Recommended)
+
+Uses Firebase/GCP services for seamless integration:
 
 ```typescript
-import { MelakaCloudService } from '@melaka/cloud';
+import { MelakaCloudGCP } from '@melaka/cloud';
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
-const service = new MelakaCloudService({
+const app = initializeApp();
+const firestore = getFirestore(app);
+
+const melaka = new MelakaCloudGCP({
+  firestore,
+  encryptionKey: process.env.ENCRYPTION_KEY!,
   oauth: {
-    clientId: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     redirectUri: 'https://melaka.dev/api/oauth/callback',
   },
-  redis: {
-    url: process.env.REDIS_URL,
+  tasks: {
+    projectId: process.env.GCP_PROJECT_ID!,
+    location: 'us-central1',
+    queueName: 'melaka-translations',
+    serviceUrl: 'https://your-cloud-run-service.run.app',
   },
   ai: {
-    aiProvider: 'gemini',
-    aiApiKey: process.env.GEMINI_API_KEY,
+    provider: 'gemini',
+    apiKey: process.env.GEMINI_API_KEY!,
   },
 });
-
-await service.start();
 ```
 
-### OAuthManager
-Handles Google OAuth for Firestore access.
+### Components
+
+- **MelakaFirestoreDatabase** - Projects, OAuth tokens (encrypted), usage records
+- **MelakaCloudTasks** - Job queue using Google Cloud Tasks
+- **OAuthManager** - Google OAuth for Firestore access
+
+## Dashboard Import
+
+For Next.js dashboard, use the lightweight import that excludes Cloud Tasks:
 
 ```typescript
-import { OAuthManager } from '@melaka/cloud';
-
-const oauth = new OAuthManager({
-  clientId: '...',
-  clientSecret: '...',
-  redirectUri: '...',
-});
-
-// Get auth URL
-const authUrl = oauth.getAuthUrl(userId);
-
-// Exchange code for tokens
-const tokens = await oauth.exchangeCode(code);
+import { MelakaFirestoreDatabase, OAuthManager } from '@melaka/cloud/dashboard';
 ```
 
-### ProjectManager
-Manages connected customer Firebase projects.
-
-```typescript
-import { ProjectManager } from '@melaka/cloud';
-
-const manager = new ProjectManager();
-const firestore = await manager.initializeProject(project);
-```
-
-### FirestoreListener
-Watches customer collections for changes.
-
-```typescript
-import { FirestoreListener } from '@melaka/cloud';
-
-const listener = new FirestoreListener(queue, {
-  onDocument: (projectId, docPath, action) => {
-    console.log(`${action}: ${docPath}`);
-  },
-});
-
-await listener.startListening(project, firestore);
-```
-
-### TranslationQueue
-Redis-backed job queue for translation tasks.
-
-```typescript
-import { TranslationQueue } from '@melaka/cloud';
-
-const queue = new TranslationQueue({
-  redisUrl: process.env.REDIS_URL,
-});
-
-await queue.enqueue(job);
-const job = await queue.dequeue();
-```
-
-### TranslationWorker
-Processes translation jobs from the queue.
-
-```typescript
-import { TranslationWorker } from '@melaka/cloud';
-
-const worker = new TranslationWorker(queue, projectManager, {
-  aiProvider: 'gemini',
-  aiApiKey: process.env.GEMINI_API_KEY,
-});
-
-await worker.start();
-```
-
-## Architecture
-
-```
-Customer's Firestore  ◄──OAuth──►  Melaka Cloud
-                                   ├── FirestoreListener (watches collections)
-                                   ├── TranslationQueue (Redis)
-                                   ├── TranslationWorker (processes jobs)
-                                   └── ProjectManager (manages connections)
-```
+This avoids bundling issues with `@google-cloud/tasks`.
 
 ## Environment Variables
 
 ```env
+# Firebase Admin
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+
+# Encryption (32+ chars)
+ENCRYPTION_KEY=your-encryption-key
+
 # Google OAuth
 GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
 
-# Redis
-REDIS_URL=redis://localhost:6379
+# Cloud Tasks
+CLOUD_TASKS_PROJECT_ID=your-project-id
+CLOUD_TASKS_LOCATION=us-central1
+CLOUD_TASKS_QUEUE_NAME=melaka-translations
+CLOUD_TASKS_SERVICE_URL=https://your-service.run.app
 
-# AI Provider (choose one)
+# AI Provider
 GEMINI_API_KEY=your-api-key
-OPENAI_API_KEY=your-api-key
-ANTHROPIC_API_KEY=your-api-key
 ```
 
-## Deployment
+## Firestore Collections
 
-The cloud service can be deployed to:
-- **Cloud Run** (recommended)
-- **Railway**
-- **Fly.io**
-- **AWS ECS/Fargate**
+The GCP edition uses these Firestore collections:
 
-### Docker
-
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY . .
-RUN pnpm install --frozen-lockfile
-RUN pnpm build
-CMD ["node", "packages/cloud/dist/index.js"]
-```
+- `melaka_projects` - Connected Firebase projects
+- `melaka_oauth_tokens` - Encrypted OAuth credentials
+- `melaka_usage` - Monthly usage records
+- `melaka_jobs` - Translation job tracking
 
 ## Security
 
-- OAuth tokens are encrypted at rest
+- OAuth tokens encrypted at rest (AES-256-GCM)
 - Minimal permissions (only Firestore access)
 - Customers can revoke access anytime
-- All operations are logged
 
 ## License
 

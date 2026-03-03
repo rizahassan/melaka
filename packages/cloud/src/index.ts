@@ -2,23 +2,54 @@
  * @melaka/cloud
  *
  * Fully managed translation service for Melaka Cloud.
- * Watches customer Firestore collections and translates automatically.
+ * Supports two deployment options:
+ * - GCP: Firestore + Cloud Tasks (recommended for Firebase projects)
+ * - Standalone: Supabase + Redis (for non-GCP deployments)
  */
 
-// Main service
+// ==================== GCP Edition (Firestore + Cloud Tasks) ====================
+
+export {
+  MelakaCloudGCP,
+  type MelakaCloudGCPConfig,
+} from './cloud-service-gcp.js';
+
+export {
+  MelakaFirestoreDatabase,
+  encrypt,
+  decrypt,
+  type FirestoreDatabaseConfig,
+  type ProjectDoc,
+  type ProjectConfig,
+  type CollectionConfig,
+  type OAuthTokenDoc,
+  type UsageDoc,
+  type TranslationJobDoc,
+} from './db/firestore-database.js';
+
+export {
+  MelakaCloudTasks,
+  type CloudTasksConfig,
+  type TaskPayload,
+} from './cloud-tasks.js';
+
+// ==================== Standalone Edition (Supabase + Redis) ====================
+
 export {
   MelakaCloudService,
   type CloudServiceConfig,
 } from './cloud-service.js';
 
-// Components
 export {
-  ProjectManager,
-  type Project,
-  type ProjectConfig,
-} from './project-manager.js';
-
-export { FirestoreListener } from './firestore-listener.js';
+  MelakaDatabase,
+  type DatabaseConfig,
+  type ProjectRow,
+  type ProjectConfig as DbProjectConfig,
+  type CollectionConfig as DbCollectionConfig,
+  type OAuthTokenRow,
+  type TranslationJobRow,
+  type UsageRecordRow,
+} from './db/index.js';
 
 export {
   TranslationQueue,
@@ -31,22 +62,17 @@ export {
   type WorkerConfig,
 } from './translation-worker.js';
 
+// ==================== Shared Components ====================
+
 export {
   OAuthManager,
   type OAuthTokens,
   type OAuthConfig,
 } from './oauth-manager.js';
 
-// Database
 export {
-  MelakaDatabase,
-  encrypt,
-  decrypt,
-  type DatabaseConfig,
-  type ProjectRow,
-  type ProjectConfig as DbProjectConfig,
-  type CollectionConfig,
-  type OAuthTokenRow,
-  type TranslationJobRow,
-  type UsageRecordRow,
-} from './db/index.js';
+  ProjectManager,
+  type Project,
+} from './project-manager.js';
+
+export { FirestoreListener } from './firestore-listener.js';

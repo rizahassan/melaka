@@ -1,8 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { MelakaFirestoreDatabase, OAuthManager } from '@melaka/cloud/dashboard';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback`;
+
+// Initialize Firebase Admin
+let firebaseApp: App;
+function getFirebaseApp(): App {
+  if (getApps().length === 0) {
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
+      : undefined;
+
+    firebaseApp = initializeApp({
+      credential: serviceAccount ? cert(serviceAccount) : undefined,
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    });
+  }
+  return firebaseApp || getApps()[0];
+}
+
+function getDatabase(): MelakaFirestoreDatabase | null {
+  if (!process.env.ENCRYPTION_KEY) return null;
+  
+  const app = getFirebaseApp();
+  const firestore = getFirestore(app);
+  
+  return new MelakaFirestoreDatabase({
+    firestore,
+    encryptionKey: process.env.ENCRYPTION_KEY,
+  });
+}
+
+function getOAuthManager(): OAuthManager | null {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) return null;
+  
+  return new OAuthManager({
+    clientId: GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    redirectUri: REDIRECT_URI,
+  });
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -22,6 +63,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const oauth = getOAuthManager();
+  const db = getDatabase();
+
+  if (!oauth || !db) {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/connect?error=not_configured`
+    );
+  }
+
   try {
     // Decode state
     const { userId, projectId } = JSON.parse(
@@ -29,43 +79,22 @@ export async function GET(request: NextRequest) {
     );
 
     // Exchange code for tokens
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID!,
-        client_secret: GOOGLE_CLIENT_SECRET!,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: REDIRECT_URI,
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.text();
-      console.error('Token exchange failed:', errorData);
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/connect?error=token_exchange_failed`
-      );
-    }
-
-    const tokens = await tokenResponse.json();
+    const tokens = await oauth.exchangeCode(code);
 
     // Get user info
-    const userInfoResponse = await fetch(
-      `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${tokens.access_token}`
-    );
-    const userInfo = await userInfoResponse.json();
+    const userInfo = await oauth.verifyToken(tokens.accessToken);
 
-    // TODO: Store tokens securely in database
-    // For now, we'll pass to the frontend via URL params (not for production!)
-    console.log('OAuth successful for:', userInfo.email);
-    console.log('Project ID:', projectId);
+    // Store encrypted tokens in Firestore
+    await db.storeTokens({
+      projectId,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: new Date(tokens.expiresAt),
+      scopes: tokens.scope ? tokens.scope.split(' ') : [],
+      googleEmail: userInfo.email,
+    });
 
-    // In production, you would:
-    // 1. Store tokens in database (encrypted)
-    // 2. Create/update project record
-    // 3. Start Firestore listener via API call to cloud service
+    console.log('OAuth successful for:', userInfo.email, 'Project:', projectId);
 
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/connect/success?projectId=${encodeURIComponent(projectId)}`

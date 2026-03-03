@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MelakaDatabase } from '@melaka/cloud';
+import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { MelakaFirestoreDatabase } from '@melaka/cloud/dashboard';
 
-// Initialize database
-const db = process.env.SUPABASE_URL && process.env.SUPABASE_KEY && process.env.ENCRYPTION_KEY
-  ? new MelakaDatabase({
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseKey: process.env.SUPABASE_KEY,
-      encryptionKey: process.env.ENCRYPTION_KEY,
-    })
-  : null;
+// Initialize Firebase Admin (singleton)
+let firebaseApp: App;
+function getFirebaseApp(): App {
+  if (getApps().length === 0) {
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
+      : undefined;
+
+    firebaseApp = initializeApp({
+      credential: serviceAccount ? cert(serviceAccount) : undefined,
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    });
+  }
+  return firebaseApp || getApps()[0];
+}
+
+function getDatabase(): MelakaFirestoreDatabase | null {
+  if (!process.env.ENCRYPTION_KEY) return null;
+  
+  const app = getFirebaseApp();
+  const firestore = getFirestore(app);
+  
+  return new MelakaFirestoreDatabase({
+    firestore,
+    encryptionKey: process.env.ENCRYPTION_KEY,
+  });
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -18,6 +39,7 @@ interface RouteParams {
  * GET /api/projects/[id] - Get a single project
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  const db = getDatabase();
   if (!db) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
@@ -35,8 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Verify ownership
-    if (project.user_id !== userId) {
+    if (project.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -54,6 +75,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * PATCH /api/projects/[id] - Update a project
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const db = getDatabase();
   if (!db) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
@@ -71,14 +93,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    if (project.user_id !== userId) {
+    if (project.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await request.json();
-    const updates = body as Record<string, unknown> & { status?: 'active' | 'paused' | 'disconnected' };
-
-    const updated = await db.updateProject(id, updates as Parameters<typeof db.updateProject>[1]);
+    await db.updateProject(id, body);
+    
+    const updated = await db.getProject(id);
     return NextResponse.json({ project: updated });
   } catch (error) {
     console.error('Failed to update project:', error);
@@ -93,6 +115,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/projects/[id] - Delete a project
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const db = getDatabase();
   if (!db) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
@@ -110,11 +133,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    if (project.user_id !== userId) {
+    if (project.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Delete associated tokens first
     await db.deleteTokens(id);
     await db.deleteProject(id);
 
