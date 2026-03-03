@@ -4,7 +4,7 @@
  * Constructs prompts for AI translation with context, glossaries, and instructions.
  */
 
-import { formatGlossary, getLanguageName } from '@melaka/core';
+import { formatGlossary, getLanguageName, formatFieldDescriptions } from '@melaka/core';
 import type { TranslationOptions } from './types';
 
 /**
@@ -18,7 +18,7 @@ export function buildTranslationPrompt(
   content: Record<string, unknown>,
   options: TranslationOptions
 ): string {
-  const { targetLanguage, prompt, glossary } = options;
+  const { targetLanguage, prompt, glossary, fieldDescriptions } = options;
   const languageName = getLanguageName(targetLanguage);
 
   const sections: string[] = [];
@@ -41,6 +41,12 @@ Preserve exactly:
     sections.push(`
 Context:
 ${prompt}`);
+  }
+
+  // Field descriptions for AI context
+  const fieldDescriptionsText = formatFieldDescriptions(fieldDescriptions);
+  if (fieldDescriptionsText) {
+    sections.push(fieldDescriptionsText);
   }
 
   // Glossary

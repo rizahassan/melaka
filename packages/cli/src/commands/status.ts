@@ -127,7 +127,8 @@ function showConfigStatus(
   console.log(chalk.white('Collections:'));
   for (const collection of collections) {
     const fields = collection.fields?.join(', ') || 'auto-detect';
-    console.log(chalk.gray(`  ${collection.path}`));
+    const groupLabel = collection.isCollectionGroup ? chalk.cyan(' (collection group)') : '';
+    console.log(chalk.gray(`  ${collection.path}${groupLabel}`));
     console.log(chalk.gray(`    Fields: ${fields}`));
     if (options.verbose && collection.prompt) {
       console.log(chalk.gray(`    Prompt: ${collection.prompt}`));
@@ -176,7 +177,12 @@ async function showLiveStatus(
 
   try {
     for (const collectionConfig of collections) {
-      const snapshot = await db.collection(collectionConfig.path).get();
+      // Use collectionGroup query for collection groups
+      const query = collectionConfig.isCollectionGroup
+        ? db.collectionGroup(collectionConfig.path)
+        : db.collection(collectionConfig.path);
+      
+      const snapshot = await query.get();
       const stats: CollectionStats = {
         path: collectionConfig.path,
         totalDocs: snapshot.size,

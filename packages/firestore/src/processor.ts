@@ -10,6 +10,7 @@ import {
   hashContent,
   mergeGlossaries,
   createTranslationSchema,
+  applyFieldMappings,
   type MelakaConfig,
   type CollectionConfig,
   type MelakaMetadata,
@@ -85,10 +86,32 @@ export async function processTranslation(
 
   try {
     // 1. Separate content into translatable and non-translatable
-    const { translatable, nonTranslatable, detectedTypes } = separateContent(
-      docData as Record<string, unknown>,
-      collectionConfig.fields
-    );
+    // Use field mappings if provided, otherwise use simple separation
+    let translatable: Record<string, unknown>;
+    let nonTranslatable: Record<string, unknown>;
+    let detectedTypes: Record<string, import('@melaka/core').SchemaType>;
+    let fieldDescriptions: Record<string, string> | undefined;
+
+    if (collectionConfig.fieldMappings && collectionConfig.fieldMappings.length > 0) {
+      const result = applyFieldMappings(
+        docData as Record<string, unknown>,
+        collectionConfig.fieldMappings
+      );
+      translatable = result.translatable;
+      nonTranslatable = result.nonTranslatable;
+      detectedTypes = result.detectedTypes;
+      fieldDescriptions = Object.keys(result.fieldDescriptions).length > 0
+        ? result.fieldDescriptions
+        : undefined;
+    } else {
+      const result = separateContent(
+        docData as Record<string, unknown>,
+        collectionConfig.fields
+      );
+      translatable = result.translatable;
+      nonTranslatable = result.nonTranslatable;
+      detectedTypes = result.detectedTypes;
+    }
 
     // Check if there's anything to translate
     if (Object.keys(translatable).length === 0) {
@@ -137,6 +160,7 @@ export async function processTranslation(
         targetLanguage,
         prompt: collectionConfig.prompt,
         glossary,
+        fieldDescriptions,
         temperature: aiConfig.temperature,
       }
     );

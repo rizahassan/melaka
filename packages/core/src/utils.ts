@@ -5,7 +5,7 @@
  */
 
 import { createHash } from 'crypto';
-import type { SchemaType, SeparatedContent } from './types';
+import type { SchemaType, SeparatedContent, FieldMapping } from './types';
 
 // ============================================================================
 // Content Hashing
@@ -340,4 +340,83 @@ export function generateBatchId(): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
   return `batch_${timestamp}_${random}`;
+}
+
+// ============================================================================
+// Field Mapping Utilities
+// ============================================================================
+
+/**
+ * Apply field mappings to extract fields with their configuration.
+ *
+ * @param doc - Document data
+ * @param fieldMappings - Field mapping configuration
+ * @returns Separated content with applied mappings
+ */
+export function applyFieldMappings(
+  doc: Record<string, unknown>,
+  fieldMappings: FieldMapping[]
+): SeparatedContent & { fieldDescriptions: Record<string, string> } {
+  const translatable: Record<string, unknown> = {};
+  const nonTranslatable: Record<string, unknown> = {};
+  const detectedTypes: Record<string, SchemaType> = {};
+  const fieldDescriptions: Record<string, string> = {};
+
+  // Build a map of source fields to mappings
+  const mappingByField = new Map<string, FieldMapping>();
+  for (const mapping of fieldMappings) {
+    mappingByField.set(mapping.sourceField, mapping);
+  }
+
+  for (const [field, value] of Object.entries(doc)) {
+    // Skip internal Melaka metadata
+    if (field === '_melaka') {
+      continue;
+    }
+
+    const mapping = mappingByField.get(field);
+
+    // If field mappings are provided but this field isn't in them, copy as non-translatable
+    if (fieldMappings.length > 0 && !mapping) {
+      nonTranslatable[field] = value;
+      continue;
+    }
+
+    // Use explicit schema type from mapping or detect it
+    const schemaType = mapping?.schemaType || detectFieldType(value);
+    const targetField = mapping?.targetField || field;
+
+    detectedTypes[targetField] = schemaType;
+
+    // Store description if provided
+    if (mapping?.description) {
+      fieldDescriptions[targetField] = mapping.description;
+    }
+
+    if (isTranslatableType(schemaType)) {
+      translatable[targetField] = value;
+    } else {
+      nonTranslatable[targetField] = value;
+    }
+  }
+
+  return { translatable, nonTranslatable, detectedTypes, fieldDescriptions };
+}
+
+/**
+ * Format field descriptions for inclusion in AI prompt.
+ *
+ * @param descriptions - Map of field names to descriptions
+ * @returns Formatted string for prompt
+ */
+export function formatFieldDescriptions(descriptions?: Record<string, string>): string {
+  if (!descriptions || Object.keys(descriptions).length === 0) {
+    return '';
+  }
+
+  const lines = Object.entries(descriptions)
+    .map(([field, desc]) => `- ${field}: ${desc}`)
+    .join('\n');
+
+  return `\nField context:\n${lines}`;
 }

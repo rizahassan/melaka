@@ -27,6 +27,12 @@ export interface TranslationOptions {
   glossary?: Record<string, string>;
 
   /**
+   * Field descriptions to help AI understand context.
+   * @example { title: 'Article headline', body: 'Main article content' }
+   */
+  fieldDescriptions?: Record<string, string>;
+
+  /**
    * Temperature for generation (0-1).
    */
   temperature?: number;

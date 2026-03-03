@@ -94,6 +94,9 @@ export {
   getLanguageName,
   // ID generation
   generateBatchId,
+  // Field mappings
+  applyFieldMappings,
+  formatFieldDescriptions,
 } from './utils';
 
 // ============================================================================

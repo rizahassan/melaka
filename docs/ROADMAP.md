@@ -115,30 +115,32 @@ Phase 2 is complete when:
 
 ---
 
-## Phase 3: Developer Experience (v0.3.0)
+## Phase 3: Developer Experience (v0.3.0) ✅ COMPLETE
 
 **Goal:** Great developer experience and tooling.
 
+**Completed:** March 2, 2026
+
 ### Features
 
-- [ ] **Collection Groups**
-  - [ ] Support for `isCollectionGroup: true`
-  - [ ] Subcollection translation
+- [x] **Collection Groups**
+  - [x] Support for `isCollectionGroup: true`
+  - [x] Subcollection translation via collectionGroup queries
 
-- [ ] **Export/Import**
-  - [ ] `melaka export` — Export translations to JSON/CSV
-  - [ ] `melaka import` — Import reviewed translations
-  - [ ] Human review workflow support
+- [x] **Export/Import**
+  - [x] `melaka export` — Export translations to JSON/CSV
+  - [x] `melaka import` — Import reviewed translations
+  - [x] Human review workflow support (--failed-only, --unreviewed-only, --mark-reviewed)
 
-- [ ] **Field Mappings**
-  - [ ] Detailed field configuration
-  - [ ] Field-level descriptions for AI context
-  - [ ] Custom schema type overrides
+- [x] **Field Mappings**
+  - [x] Detailed field configuration via `fieldMappings`
+  - [x] Field-level descriptions for AI context
+  - [x] Custom schema type overrides
 
-- [ ] **Local Development**
-  - [ ] Firebase emulator support
-  - [ ] Local translation preview
-  - [ ] Watch mode for development
+- [x] **Local Development**
+  - [x] Firebase emulator support (--emulator flag)
+  - [x] `melaka watch` — Real-time translation during development
+  - [x] Verbose mode for debugging
 
 ### Documentation
 

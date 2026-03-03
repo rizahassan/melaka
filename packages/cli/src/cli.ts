@@ -13,6 +13,9 @@ import { statusCommand } from './commands/status';
 import { validateCommand } from './commands/validate';
 import { retryCommand } from './commands/retry';
 import { cleanupCommand } from './commands/cleanup';
+import { exportCommand } from './commands/export';
+import { importCommand } from './commands/import';
+import { watchCommand } from './commands/watch';
 
 const program = new Command();
 
@@ -29,6 +32,9 @@ program.addCommand(statusCommand);
 program.addCommand(validateCommand);
 program.addCommand(retryCommand);
 program.addCommand(cleanupCommand);
+program.addCommand(exportCommand);
+program.addCommand(importCommand);
+program.addCommand(watchCommand);
 
 // Parse arguments
 program.parse();
