@@ -212,14 +212,14 @@ Phase 2 is complete when:
 
 ---
 
-## Phase 6: Melaka Cloud (v1.1.0)
+## Phase 6: Melaka Cloud (v1.1.0) 🚧 IN PROGRESS
 
 **Goal:** Fully managed SaaS — customers just connect Firebase, we handle everything.
 
 ### Business Model
 - **Free:** Self-hosted with own AI keys (current SDK)
 - **Pro ($29/mo):** Fully managed translations + dashboard
-- **Enterprise ($299/mo):** Everything + SSO + translation memory + priority support
+- **Enterprise ($299/mo):** Everything + SSO + translation memory + priority support (roadmap)
 
 ### Customer Experience
 1. Sign up at melaka.dev
@@ -232,12 +232,58 @@ Phase 2 is complete when:
 
 ### Features
 
-- [ ] **OAuth Integration**
-  - [ ] "Connect with Google" in dashboard
-  - [ ] Request Firestore read/write permissions
-  - [ ] Secure token storage (encrypted)
+- [x] **OAuth Integration**
+  - [x] "Connect with Google" in dashboard
+  - [x] Request Firestore read/write permissions
+  - [x] Secure token storage (AES-256-GCM encrypted)
   - [ ] Per-collection permission scoping
-  - [ ] Easy disconnect/revoke
+  - [ ] Easy disconnect/revoke UI
+
+- [x] **Database Layer**
+  - [x] Supabase/PostgreSQL schema
+  - [x] Projects CRUD with user ownership
+  - [x] Encrypted OAuth token storage
+  - [x] Usage metering records
+
+- [x] **Project Management APIs**
+  - [x] GET/POST /api/projects
+  - [x] GET/PATCH/DELETE /api/projects/[id]
+
+- [x] **Cloud Package (@melaka/cloud)**
+  - [x] OAuthManager for Google OAuth
+  - [x] ProjectManager for Firebase projects
+  - [x] FirestoreListener for collection watching
+  - [x] TranslationQueue (Redis-backed)
+  - [x] TranslationWorker with AI integration
+
+- [ ] **Firestore Listener Service Deployment**
+  - [x] Core listener implementation
+  - [ ] Cloud Run deployment
+  - [ ] Auto-scaling configuration
+  - [ ] Health checks and monitoring
+
+- [ ] **AI Translation Engine**
+  - [x] Multi-provider support (Gemini, OpenAI, Claude)
+  - [x] Automatic provider fallback
+  - [ ] Production deployment
+  - [ ] Cost optimization
+
+- [ ] **Translation Memory** (deferred to Enterprise)
+  - [ ] Cache translations server-side
+  - [ ] Similarity matching (fuzzy reuse)
+
+- [ ] **Usage Metering & Billing**
+  - [x] Usage records schema
+  - [x] Stripe integration (checkout, portal, webhook)
+  - [ ] Real-time usage tracking
+  - [ ] Overage alerts and notifications
+
+- [ ] **Dashboard Enhancements**
+  - [x] Connect Firebase page (/connect)
+  - [x] Pricing page with Free/Pro tiers
+  - [ ] Collection selector with preview
+  - [ ] Real-time translation status
+  - [ ] Usage & cost analytics
 
 - [ ] **Firestore Listener Service**
   - [ ] Watches customer's Firestore collections

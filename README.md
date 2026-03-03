@@ -15,8 +15,11 @@ Firebase has no great i18n solution today. Melaka fills that gap with:
 - 🔍 **Change Detection** — Content hashing prevents unnecessary re-translations
 - 📖 **Glossary Support** — Consistent terminology across your app
 - ✅ **Human Review Workflow** — Mark translations as reviewed
+- ☁️ **Melaka Cloud** — Fully managed option (no deployment needed)
 
 ## Quick Start
+
+### Self-Hosted (Free)
 
 ```bash
 # Install Melaka CLI
@@ -33,6 +36,27 @@ melaka init
 melaka deploy
 ```
 
+### Melaka Cloud (Coming Soon)
+
+No deployment needed — just connect your Firebase project:
+
+1. Sign up at melaka.dev
+2. Click "Connect Firebase" (OAuth)
+3. Select collections to translate
+4. Configure target languages
+5. Done! Translations happen automatically.
+
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| `@melaka/core` | Config parsing, types, utilities |
+| `@melaka/ai` | AI translation facade (Gemini, OpenAI, Claude) |
+| `@melaka/firestore` | Firestore triggers and i18n helpers |
+| `@melaka/cli` | Command-line interface |
+| `@melaka/dashboard` | Translation review web UI |
+| `@melaka/cloud` | Fully managed backend (Melaka Cloud) |
+
 ## Documentation
 
 - [Integration Guide](./docs/INTEGRATION.md) — Step-by-step setup
@@ -44,7 +68,8 @@ melaka deploy
 
 ## Status
 
-🚧 **Early Development** — Not ready for production use yet.
+✅ **Core SDK Complete** — Self-hosted solution is fully functional.  
+🚧 **Melaka Cloud In Progress** — Fully managed SaaS coming soon.
 
 See [ROADMAP.md](./docs/ROADMAP.md) for planned features.
 

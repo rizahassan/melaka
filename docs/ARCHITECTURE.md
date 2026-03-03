@@ -57,7 +57,9 @@ melaka/
 │   ├── core/           # Config parsing, types, schemas, utilities
 │   ├── firestore/      # Firestore adapter, triggers, i18n operations
 │   ├── ai/             # AI provider adapters (Gemini, OpenAI, Claude)
-│   └── cli/            # Command-line interface
+│   ├── cli/            # Command-line interface
+│   ├── dashboard/      # Translation review web UI (Next.js)
+│   └── cloud/          # Melaka Cloud backend (managed service)
 ├── examples/
 │   └── basic/          # Basic usage example
 ├── docs/               # Documentation
@@ -103,6 +105,26 @@ Command-line interface:
 - **`melaka translate`** — Run manual translation for a collection
 - **`melaka status`** — Check translation progress
 - **`melaka retry`** — Retry failed translations
+
+### @melaka/dashboard
+
+Translation review web UI (Next.js 14):
+
+- **Review Interface** — Side-by-side source/translation view
+- **Analytics** — Translation statistics and progress
+- **Settings** — Configure collections and languages
+- **Pricing** — Melaka Cloud subscription management
+
+### @melaka/cloud
+
+Fully managed backend for Melaka Cloud:
+
+- **OAuthManager** — Google OAuth for Firestore access
+- **ProjectManager** — Customer Firebase project management
+- **FirestoreListener** — Watch customer collections for changes
+- **TranslationQueue** — Redis-backed job queue
+- **TranslationWorker** — Process translations using AI
+- **MelakaDatabase** — Supabase/PostgreSQL for encrypted token storage
 
 ---
 
@@ -497,6 +519,73 @@ interface DatabaseAdapter {
   onDocumentChange(path: string, handler: ChangeHandler): void;
 }
 ```
+
+---
+
+## Melaka Cloud Architecture
+
+For fully managed deployments, Melaka Cloud provides a complete backend:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              Customer's Firebase Project                     │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │                    Firestore                         │    │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐           │    │
+│  │  │ articles │  │  quiz    │  │ lessons  │  ...      │    │
+│  │  │  └─i18n  │  │  └─i18n  │  │  └─i18n  │           │    │
+│  │  └──────────┘  └──────────┘  └──────────┘           │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                           ▲                                  │
+│                           │ Read/Write (OAuth)               │
+└───────────────────────────┼─────────────────────────────────┘
+                            │
+┌───────────────────────────┼─────────────────────────────────┐
+│                     Melaka Cloud                             │
+│                           │                                  │
+│  ┌────────────────────────▼────────────────────────────┐    │
+│  │              Firestore Listener Service              │    │
+│  │  • Watches customer collections                      │    │
+│  │  • Detects changes via onSnapshot                    │    │
+│  │  • Queues translation jobs                           │    │
+│  └────────────────────────┬────────────────────────────┘    │
+│                           │                                  │
+│  ┌────────────────────────▼────────────────────────────┐    │
+│  │              Translation Engine                      │    │
+│  │  ┌──────────┐  ┌──────────────┐  ┌──────────────┐   │    │
+│  │  │ Job Queue│  │   Database   │  │  AI Providers│   │    │
+│  │  │ (Redis)  │  │  (Postgres)  │  │ Gemini/GPT/  │   │    │
+│  │  │          │  │              │  │ Claude       │   │    │
+│  │  └──────────┘  └──────────────┘  └──────────────┘   │    │
+│  └────────────────────────┬────────────────────────────┘    │
+│                           │                                  │
+│  ┌────────────────────────▼────────────────────────────┐    │
+│  │              Dashboard & API                         │    │
+│  │  • OAuth management        • Usage tracking          │    │
+│  │  • Translation review      • Stripe billing          │    │
+│  │  • Analytics               • Team management         │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Infrastructure Components
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Dashboard | Next.js (Vercel) | UI + API routes |
+| Listener Service | Node.js (Cloud Run / Railway) | Watch customer Firestore |
+| Job Queue | Redis (Upstash) | Translation job management |
+| Database | PostgreSQL (Supabase) | Projects, tokens, usage |
+| Auth | Firebase Auth | User management |
+| Billing | Stripe | Subscriptions + usage billing |
+
+### Security
+
+- OAuth tokens encrypted at rest (AES-256-GCM)
+- Minimal permissions (only requested collections)
+- Customer can revoke access anytime
+- Audit logging for all operations
 
 ---
 
