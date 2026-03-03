@@ -25,11 +25,8 @@
     "@melaka/ai": "workspace:*",
     "@melaka/core": "workspace:*",
     "@google-cloud/tasks": "^5.0.0",
-    "@supabase/supabase-js": "^2.98.0",
     "firebase-admin": "^12.0.0",
-    "google-auth-library": "^9.0.0",
-    "ioredis": "^5.4.0",
-    "zod": "^3.22.0"
+    "google-auth-library": "^9.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

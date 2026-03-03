@@ -119,12 +119,11 @@ Translation review web UI (Next.js 14):
 
 Fully managed backend for Melaka Cloud:
 
-- **OAuthManager** — Google OAuth for Firestore access
-- **ProjectManager** — Customer Firebase project management
+- **MelakaCloudGCP** — Main service orchestrator
+- **MelakaFirestoreDatabase** — Projects, OAuth tokens (encrypted), usage records
+- **MelakaCloudTasks** — Job queue using Google Cloud Tasks
+- **OAuthManager** — Google OAuth for customer Firestore access
 - **FirestoreListener** — Watch customer collections for changes
-- **TranslationQueue** — Redis-backed job queue
-- **TranslationWorker** — Process translations using AI
-- **MelakaDatabase** — Supabase/PostgreSQL for encrypted token storage
 
 ---
 
@@ -524,7 +523,7 @@ interface DatabaseAdapter {
 
 ## Melaka Cloud Architecture
 
-For fully managed deployments, Melaka Cloud provides a complete backend:
+For fully managed deployments, Melaka Cloud provides a complete backend using Firebase/GCP services:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -554,9 +553,9 @@ For fully managed deployments, Melaka Cloud provides a complete backend:
 │  ┌────────────────────────▼────────────────────────────┐    │
 │  │              Translation Engine                      │    │
 │  │  ┌──────────┐  ┌──────────────┐  ┌──────────────┐   │    │
-│  │  │ Job Queue│  │   Database   │  │  AI Providers│   │    │
-│  │  │ (Redis)  │  │  (Postgres)  │  │ Gemini/GPT/  │   │    │
-│  │  │          │  │              │  │ Claude       │   │    │
+│  │  │Cloud     │  │   Firestore  │  │  AI Providers│   │    │
+│  │  │Tasks     │  │   Database   │  │ Gemini/GPT/  │   │    │
+│  │  │(Queue)   │  │              │  │ Claude       │   │    │
 │  │  └──────────┘  └──────────────┘  └──────────────┘   │    │
 │  └────────────────────────┬────────────────────────────┘    │
 │                           │                                  │
@@ -573,10 +572,10 @@ For fully managed deployments, Melaka Cloud provides a complete backend:
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| Dashboard | Next.js (Vercel) | UI + API routes |
-| Listener Service | Node.js (Cloud Run / Railway) | Watch customer Firestore |
-| Job Queue | Redis (Upstash) | Translation job management |
-| Database | PostgreSQL (Supabase) | Projects, tokens, usage |
+| Dashboard | Next.js (Firebase Hosting) | UI + API routes |
+| Listener Service | Node.js (Cloud Run) | Watch customer Firestore |
+| Job Queue | Cloud Tasks | Translation job management |
+| Database | Firestore | Projects, tokens (encrypted), usage |
 | Auth | Firebase Auth | User management |
 | Billing | Stripe | Subscriptions + usage billing |
 

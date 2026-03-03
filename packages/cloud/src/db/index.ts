@@ -1,10 +1,10 @@
-export { MelakaDatabase, encrypt, decrypt } from './database.js';
+export { MelakaFirestoreDatabase, encrypt, decrypt } from './firestore-database.js';
 export type {
-  DatabaseConfig,
-  ProjectRow,
+  FirestoreDatabaseConfig,
+  ProjectDoc,
   ProjectConfig,
   CollectionConfig,
-  OAuthTokenRow,
-  TranslationJobRow,
-  UsageRecordRow,
-} from './database.js';
+  OAuthTokenDoc,
+  UsageDoc,
+  TranslationJobDoc,
+} from './firestore-database.js';

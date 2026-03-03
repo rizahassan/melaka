@@ -4,14 +4,15 @@ Fully managed translation service backend for Melaka Cloud.
 
 ## Overview
 
-This package provides the server-side infrastructure for Melaka's fully managed translation service. Supports two deployment options:
+This package provides the server-side infrastructure for Melaka's fully managed translation service using Firebase/GCP services.
 
-- **GCP Edition**: Firestore + Cloud Tasks (recommended for Firebase projects)
-- **Standalone Edition**: Supabase + Redis (for non-GCP deployments)
+**Stack:**
+- **Database**: Firestore
+- **Queue**: Cloud Tasks
+- **Auth**: Firebase Auth + Google OAuth
+- **Hosting**: Firebase Hosting / Cloud Run
 
-## GCP Edition (Recommended)
-
-Uses Firebase/GCP services for seamless integration:
+## Usage
 
 ```typescript
 import { MelakaCloudGCP } from '@melaka/cloud';
@@ -42,11 +43,12 @@ const melaka = new MelakaCloudGCP({
 });
 ```
 
-### Components
+## Components
 
+- **MelakaCloudGCP** - Main service orchestrator
 - **MelakaFirestoreDatabase** - Projects, OAuth tokens (encrypted), usage records
 - **MelakaCloudTasks** - Job queue using Google Cloud Tasks
-- **OAuthManager** - Google OAuth for Firestore access
+- **OAuthManager** - Google OAuth for customer Firestore access
 
 ## Dashboard Import
 
@@ -56,7 +58,7 @@ For Next.js dashboard, use the lightweight import that excludes Cloud Tasks:
 import { MelakaFirestoreDatabase, OAuthManager } from '@melaka/cloud/dashboard';
 ```
 
-This avoids bundling issues with `@google-cloud/tasks`.
+This avoids bundling issues with `@google-cloud/tasks` in Next.js.
 
 ## Environment Variables
 
@@ -83,8 +85,6 @@ GEMINI_API_KEY=your-api-key
 ```
 
 ## Firestore Collections
-
-The GCP edition uses these Firestore collections:
 
 - `melaka_projects` - Connected Firebase projects
 - `melaka_oauth_tokens` - Encrypted OAuth credentials

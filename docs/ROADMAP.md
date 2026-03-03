@@ -240,9 +240,9 @@ Phase 2 is complete when:
   - [ ] Easy disconnect/revoke UI
 
 - [x] **Database Layer**
-  - [x] Supabase/PostgreSQL schema
+  - [x] Firestore schema for projects, tokens, usage
   - [x] Projects CRUD with user ownership
-  - [x] Encrypted OAuth token storage
+  - [x] Encrypted OAuth token storage (AES-256-GCM)
   - [x] Usage metering records
 
 - [x] **Project Management APIs**
@@ -250,11 +250,11 @@ Phase 2 is complete when:
   - [x] GET/PATCH/DELETE /api/projects/[id]
 
 - [x] **Cloud Package (@melaka/cloud)**
+  - [x] MelakaCloudGCP main orchestrator
+  - [x] MelakaFirestoreDatabase for projects/tokens/usage
+  - [x] MelakaCloudTasks for job queue
   - [x] OAuthManager for Google OAuth
-  - [x] ProjectManager for Firebase projects
   - [x] FirestoreListener for collection watching
-  - [x] TranslationQueue (Redis-backed)
-  - [x] TranslationWorker with AI integration
 
 - [ ] **Firestore Listener Service Deployment**
   - [x] Core listener implementation
@@ -284,40 +284,6 @@ Phase 2 is complete when:
   - [ ] Collection selector with preview
   - [ ] Real-time translation status
   - [ ] Usage & cost analytics
-
-- [ ] **Firestore Listener Service**
-  - [ ] Watches customer's Firestore collections
-  - [ ] Detects document creates/updates
-  - [ ] Queues translation jobs
-  - [ ] Writes translations back to i18n subcollections
-  - [ ] Handles retries and failures
-
-- [ ] **AI Translation Engine**
-  - [ ] Multi-provider support (Gemini, OpenAI, Claude)
-  - [ ] Automatic provider fallback
-  - [ ] Customer doesn't need AI API keys
-  - [ ] Melaka handles all AI costs (built into pricing)
-
-- [ ] **Translation Memory**
-  - [ ] Cache translations server-side
-  - [ ] Similarity matching (fuzzy reuse)
-  - [ ] Significant cost savings
-  - [ ] Cross-project memory (opt-in for enterprise)
-
-- [ ] **Usage Metering & Billing**
-  - [ ] Track translations per customer
-  - [ ] Stripe subscription + usage billing
-  - [ ] Free tier limits (e.g., 1,000 translations/month)
-  - [ ] Usage dashboard with cost breakdown
-  - [ ] Overage alerts and notifications
-
-- [ ] **Dashboard Enhancements**
-  - [ ] Project connection wizard
-  - [ ] Collection selector with preview
-  - [ ] Real-time translation status
-  - [ ] Usage & cost analytics
-  - [ ] Billing management (Stripe portal)
-  - [ ] Team invitations and roles
 
 ### Architecture
 
@@ -349,9 +315,9 @@ Phase 2 is complete when:
 │  ┌────────────────────────▼────────────────────────────┐    │
 │  │              Translation Engine                      │    │
 │  │  ┌──────────┐  ┌──────────────┐  ┌──────────────┐   │    │
-│  │  │ Job Queue│  │ Trans Memory │  │  AI Providers│   │    │
-│  │  │ (Redis)  │  │  (Postgres)  │  │ Gemini/GPT/  │   │    │
-│  │  │          │  │              │  │ Claude       │   │    │
+│  │  │Cloud     │  │   Firestore  │  │  AI Providers│   │    │
+│  │  │Tasks     │  │   Database   │  │ Gemini/GPT/  │   │    │
+│  │  │(Queue)   │  │              │  │ Claude       │   │    │
 │  │  └──────────┘  └──────────────┘  └──────────────┘   │    │
 │  └────────────────────────┬────────────────────────────┘    │
 │                           │                                  │
@@ -368,10 +334,10 @@ Phase 2 is complete when:
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| Dashboard | Next.js (Vercel) | UI + API routes |
-| Listener Service | Node.js (Cloud Run / Railway) | Watch customer Firestore |
-| Job Queue | Redis (Upstash) | Translation job management |
-| Translation Memory | PostgreSQL (Supabase) | Cache + similarity matching |
+| Dashboard | Next.js (Firebase Hosting) | UI + API routes |
+| Listener Service | Node.js (Cloud Run) | Watch customer Firestore |
+| Job Queue | Cloud Tasks | Translation job management |
+| Database | Firestore | Projects, tokens (encrypted), usage |
 | Auth | Firebase Auth | User management |
 | Billing | Stripe | Subscriptions + usage billing |
 
@@ -404,7 +370,6 @@ Self-hosted (Free)              Melaka Cloud (Paid)
 These are ideas for future consideration, not committed features:
 
 ### Database Adapters
-- Supabase/PostgreSQL adapter
 - MongoDB adapter
 - PlanetScale adapter
 

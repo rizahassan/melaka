@@ -2,17 +2,17 @@
  * @melaka/cloud
  *
  * Fully managed translation service for Melaka Cloud.
- * Supports two deployment options:
- * - GCP: Firestore + Cloud Tasks (recommended for Firebase projects)
- * - Standalone: Supabase + Redis (for non-GCP deployments)
+ * Uses Firebase/GCP services: Firestore + Cloud Tasks.
  */
 
-// ==================== GCP Edition (Firestore + Cloud Tasks) ====================
+// ==================== Main Service ====================
 
 export {
   MelakaCloudGCP,
   type MelakaCloudGCPConfig,
 } from './cloud-service-gcp.js';
+
+// ==================== Database ====================
 
 export {
   MelakaFirestoreDatabase,
@@ -25,7 +25,9 @@ export {
   type OAuthTokenDoc,
   type UsageDoc,
   type TranslationJobDoc,
-} from './db/firestore-database.js';
+} from './db/index.js';
+
+// ==================== Cloud Tasks ====================
 
 export {
   MelakaCloudTasks,
@@ -33,36 +35,7 @@ export {
   type TaskPayload,
 } from './cloud-tasks.js';
 
-// ==================== Standalone Edition (Supabase + Redis) ====================
-
-export {
-  MelakaCloudService,
-  type CloudServiceConfig,
-} from './cloud-service.js';
-
-export {
-  MelakaDatabase,
-  type DatabaseConfig,
-  type ProjectRow,
-  type ProjectConfig as DbProjectConfig,
-  type CollectionConfig as DbCollectionConfig,
-  type OAuthTokenRow,
-  type TranslationJobRow,
-  type UsageRecordRow,
-} from './db/index.js';
-
-export {
-  TranslationQueue,
-  type TranslationJob,
-  type QueueConfig,
-} from './translation-queue.js';
-
-export {
-  TranslationWorker,
-  type WorkerConfig,
-} from './translation-worker.js';
-
-// ==================== Shared Components ====================
+// ==================== OAuth ====================
 
 export {
   OAuthManager,
@@ -70,9 +43,19 @@ export {
   type OAuthConfig,
 } from './oauth-manager.js';
 
+// ==================== Listener ====================
+
+export {
+  FirestoreListener,
+  type Project,
+  type CollectionConfig as ListenerCollectionConfig,
+  type ListenerOptions,
+} from './firestore-listener.js';
+
+// ==================== Project Manager ====================
+
 export {
   ProjectManager,
-  type Project,
+  type Project as ProjectManagerProject,
+  type ProjectConfig as ProjectManagerConfig,
 } from './project-manager.js';
-
-export { FirestoreListener } from './firestore-listener.js';

@@ -1,10 +1,29 @@
 /**
  * Firestore Listener - Watches customer collections for changes.
+ * Uses Cloud Tasks for job queuing.
  */
 
 import type { Firestore, DocumentSnapshot } from 'firebase-admin/firestore';
-import type { Project, ProjectConfig } from './project-manager.js';
-import type { TranslationQueue, TranslationJob } from './translation-queue.js';
+import type { MelakaCloudTasks, TaskPayload } from './cloud-tasks.js';
+import type { MelakaFirestoreDatabase } from './db/firestore-database.js';
+
+export interface Project {
+  id: string;
+  firebaseProjectId: string;
+  config: {
+    collections: CollectionConfig[];
+    sourceLocale: string;
+    targetLocales: string[];
+    glossary?: Record<string, Record<string, string>>;
+  };
+}
+
+export interface CollectionConfig {
+  path: string;
+  fields: string[];
+  isCollectionGroup?: boolean;
+  enabled?: boolean;
+}
 
 export interface ListenerOptions {
   onError?: (projectId: string, error: Error) => void;
@@ -13,24 +32,29 @@ export interface ListenerOptions {
 
 export class FirestoreListener {
   private listeners: Map<string, (() => void)[]> = new Map();
-  private queue: TranslationQueue;
+  private tasks: MelakaCloudTasks;
+  private db: MelakaFirestoreDatabase;
   private options: ListenerOptions;
 
-  constructor(queue: TranslationQueue, options: ListenerOptions = {}) {
-    this.queue = queue;
+  constructor(
+    tasks: MelakaCloudTasks,
+    db: MelakaFirestoreDatabase,
+    options: ListenerOptions = {}
+  ) {
+    this.tasks = tasks;
+    this.db = db;
     this.options = options;
   }
 
   /**
    * Start listening to a project's collections.
    */
-  async startListening(
-    project: Project,
-    firestore: Firestore
-  ): Promise<void> {
+  async startListening(project: Project, firestore: Firestore): Promise<void> {
     const unsubscribes: (() => void)[] = [];
 
     for (const collectionConfig of project.config.collections) {
+      if (collectionConfig.enabled === false) continue;
+
       const { path, fields, isCollectionGroup } = collectionConfig;
 
       const query = isCollectionGroup
@@ -93,20 +117,26 @@ export class FirestoreListener {
 
     // Queue translation jobs for each target locale
     for (const targetLocale of project.config.targetLocales) {
-      const job: TranslationJob = {
-        id: `${project.id}-${doc.ref.path}-${targetLocale}-${Date.now()}`,
+      // Create job in Firestore database
+      const jobId = await this.db.createJob({
         projectId: project.id,
         documentPath: doc.ref.path,
         sourceLocale: project.config.sourceLocale,
         targetLocale,
         fields: translatableData,
-        glossary: project.config.glossary,
-        createdAt: new Date(),
-        attempts: 0,
-        status: 'pending',
+      });
+
+      // Enqueue Cloud Task
+      const payload: TaskPayload = {
+        jobId,
+        projectId: project.id,
+        documentPath: doc.ref.path,
+        sourceLocale: project.config.sourceLocale,
+        targetLocale,
+        fields: translatableData,
       };
 
-      await this.queue.enqueue(job);
+      await this.tasks.enqueueTranslation(payload);
     }
   }
 
