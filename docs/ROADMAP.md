@@ -212,6 +212,97 @@ Phase 2 is complete when:
 
 ---
 
+## Phase 6: Melaka Cloud (v1.1.0)
+
+**Goal:** Managed SaaS with AI proxy for monetization.
+
+### Business Model
+- **Free:** Self-hosted with own AI keys (current)
+- **Pro ($29/mo):** Melaka Cloud proxy + dashboard
+- **Enterprise ($299/mo):** Everything + SSO + translation memory
+
+### Features
+
+- [ ] **OAuth Integration**
+  - [ ] "Connect with Google" in dashboard
+  - [ ] Grant Firestore read/write access
+  - [ ] Secure token storage
+  - [ ] Permission scoping (specific collections only)
+
+- [ ] **Melaka AI Provider**
+  - [ ] New `provider: 'melaka'` option in config
+  - [ ] Proxies to Gemini/OpenAI/Claude on backend
+  - [ ] User doesn't need AI API keys
+  - [ ] Same SDK, zero code changes
+
+- [ ] **Melaka API Service**
+  - [ ] Node.js / Cloudflare Workers backend
+  - [ ] Firestore listener service (watches user's collections)
+  - [ ] AI request proxy with caching
+  - [ ] Rate limiting and abuse protection
+
+- [ ] **Translation Memory (Cloud)**
+  - [ ] Cache translations server-side
+  - [ ] Similarity matching to reuse translations
+  - [ ] Cost savings passed to customers
+  - [ ] Cross-project memory (opt-in)
+
+- [ ] **Usage Metering & Billing**
+  - [ ] Track translations per user
+  - [ ] Stripe usage-based billing
+  - [ ] Dashboard usage analytics
+  - [ ] Overage alerts
+
+- [ ] **Dashboard Enhancements**
+  - [ ] Project connection wizard
+  - [ ] Usage & cost dashboard
+  - [ ] Billing management (Stripe portal)
+  - [ ] Team invitations
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     User's Firebase Project                  │
+│  ┌─────────────┐    ┌─────────────────────────────────────┐ │
+│  │  Firestore  │◄───│  Cloud Functions (@melaka/firestore)│ │
+│  │   (data)    │    │  provider: 'melaka'                 │ │
+│  └─────────────┘    └──────────────┬──────────────────────┘ │
+└────────────────────────────────────┼────────────────────────┘
+                                     │ MELAKA_API_KEY
+                                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Melaka Cloud                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │  Melaka API  │  │ Translation  │  │   Stripe     │       │
+│  │   Service    │  │    Memory    │  │   Billing    │       │
+│  └──────┬───────┘  └──────────────┘  └──────────────┘       │
+│         │                                                    │
+│         ▼                                                    │
+│  ┌──────────────────────────────────────────────────┐       │
+│  │              AI Provider Proxy                    │       │
+│  │   Gemini  │  OpenAI  │  Claude  │  Custom        │       │
+│  └──────────────────────────────────────────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Migration Path (Zero Breaking Changes)
+```ts
+// Before (self-hosted, free)
+ai: {
+  provider: 'gemini',
+  apiKey: process.env.GEMINI_API_KEY,
+}
+
+// After (Melaka Cloud, paid)
+ai: {
+  provider: 'melaka',
+  apiKey: process.env.MELAKA_API_KEY, // Get from dashboard
+}
+```
+
+---
+
 ## Future Ideas
 
 These are ideas for future consideration, not committed features:
@@ -256,11 +347,12 @@ We welcome contributions! See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelin
 
 | Version | Target | Focus |
 |---------|--------|-------|
-| v0.1.0 | Q2 2026 | MVP |
-| v0.2.0 | Q2 2026 | Production ready |
-| v0.3.0 | Q3 2026 | Developer experience |
-| v0.4.0 | Q3 2026 | Dashboard |
-| v1.0.0 | Q4 2026 | Enterprise |
+| v0.1.0 | ✅ Mar 2026 | MVP |
+| v0.2.0 | ✅ Mar 2026 | Production ready |
+| v0.3.0 | ✅ Mar 2026 | Developer experience |
+| v0.4.0 | ✅ Mar 2026 | Dashboard |
+| v1.0.0 | Q2 2026 | Enterprise |
+| v1.1.0 | Q3 2026 | Melaka Cloud (SaaS) |
 
 *Dates are estimates and subject to change.*
 
