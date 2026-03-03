@@ -150,33 +150,37 @@ Phase 2 is complete when:
 
 ---
 
-## Phase 4: Dashboard (v0.4.0)
+## Phase 4: Dashboard (v0.4.0) ✅ COMPLETE
 
 **Goal:** Web UI for translation management.
 
+**Completed:** March 2, 2026
+
 ### Features
 
-- [ ] **Review Dashboard**
-  - [ ] Web interface for reviewing translations
-  - [ ] Side-by-side source/translation view
-  - [ ] Mark as reviewed functionality
-  - [ ] Edit and save translations
+- [x] **Review Dashboard**
+  - [x] Web interface for reviewing translations
+  - [x] Side-by-side source/translation view
+  - [x] Mark as reviewed functionality
+  - [x] Edit and save translations
 
-- [ ] **Analytics**
-  - [ ] Translation statistics
-  - [ ] Cost tracking
-  - [ ] Error monitoring
+- [x] **Analytics**
+  - [x] Translation statistics
+  - [x] Progress tracking by collection/language
+  - [x] Recent activity feed
 
-- [ ] **Team Features**
+- [ ] **Team Features** (deferred to v0.5.0)
   - [ ] Multiple reviewers
   - [ ] Review assignments
   - [ ] Comment system
 
 ### Technical
 
-- [ ] React/Next.js dashboard
-- [ ] Firebase Auth integration
-- [ ] Hosted version option
+- [x] Next.js 14 dashboard
+- [x] Tailwind CSS styling
+- [x] Firebase client SDK integration
+- [ ] Firebase Auth integration (deferred)
+- [ ] Hosted version option (deferred)
 
 ---
 
