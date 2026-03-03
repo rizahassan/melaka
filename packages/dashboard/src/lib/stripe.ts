@@ -17,6 +17,7 @@ export const PLANS = {
       'Unlimited self-hosted translations',
       'Community support',
       '3 AI providers (Gemini, OpenAI, Claude)',
+      'Deploy your own Cloud Functions',
     ],
     limits: {
       teamMembers: 1,
@@ -29,36 +30,17 @@ export const PLANS = {
     price: 29,
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
     features: [
-      'Everything in Free',
-      'Hosted dashboard access',
+      'Fully managed translations',
+      'No Cloud Functions needed',
+      'No AI API keys needed',
+      'Hosted dashboard',
       'Up to 5 team members',
       'Unlimited projects',
       'Priority email support',
-      'Export/Import workflows',
     ],
     limits: {
       teamMembers: 5,
       projects: -1, // unlimited
-    },
-  },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 299,
-    priceId: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID,
-    features: [
-      'Everything in Pro',
-      'Unlimited team members',
-      'SSO integration',
-      'Audit logging',
-      'Translation memory',
-      'Custom AI models',
-      'Dedicated support',
-      'SLA guarantee',
-    ],
-    limits: {
-      teamMembers: -1, // unlimited
-      projects: -1,
     },
   },
 } as const;
