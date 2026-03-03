@@ -26,15 +26,18 @@ function MelakaLogo() {
 }
 
 const navLinks = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/translations', label: 'Translations' },
-  { href: '/analytics', label: 'Analytics' },
-  { href: '/pricing', label: 'Pricing' },
+  { href: '/dashboard', label: 'Dashboard', auth: true },
+  { href: '/translations', label: 'Translations', auth: true },
+  { href: '/analytics', label: 'Analytics', auth: true },
+  { href: '/pricing', label: 'Pricing', auth: false },
 ];
 
 export function Header() {
   const { user, loading, signOut } = useAuth();
   const pathname = usePathname();
+
+  // Filter nav links based on auth state
+  const visibleLinks = navLinks.filter((link) => !link.auth || user);
 
   return (
     <header className="border-b border-[rgba(255,255,255,0.06)]">
@@ -43,7 +46,7 @@ export function Header() {
         <div className="flex items-center gap-8">
           <MelakaLogo />
           <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
+            {visibleLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
