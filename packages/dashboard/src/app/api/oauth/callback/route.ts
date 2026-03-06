@@ -77,14 +77,20 @@ export async function GET(request: NextRequest) {
     const { userId, projectId } = JSON.parse(
       Buffer.from(state, 'base64').toString()
     );
+    console.log('OAuth callback - userId:', userId, 'projectId:', projectId);
 
     // Exchange code for tokens
+    console.log('Exchanging code for tokens...');
     const tokens = await oauth.exchangeCode(code);
+    console.log('Tokens received, scopes:', tokens.scope);
 
     // Get user info
+    console.log('Verifying token...');
     const userInfo = await oauth.verifyToken(tokens.accessToken);
+    console.log('User info:', userInfo.email);
 
     // Store encrypted tokens in Firestore
+    console.log('Storing tokens in Firestore...');
     await db.storeTokens({
       projectId,
       accessToken: tokens.accessToken,
@@ -101,8 +107,9 @@ export async function GET(request: NextRequest) {
     );
   } catch (err) {
     console.error('OAuth callback error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/connect?error=callback_failed`
+      `${process.env.NEXT_PUBLIC_APP_URL}/connect?error=callback_failed&detail=${encodeURIComponent(errorMessage)}`
     );
   }
 }

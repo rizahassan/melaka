@@ -53,13 +53,14 @@ export class OAuthManager {
   async exchangeCode(code: string): Promise<OAuthTokens> {
     const { tokens } = await this.client.getToken(code);
 
-    if (!tokens.access_token || !tokens.refresh_token) {
-      throw new Error('Failed to get tokens from OAuth exchange');
+    if (!tokens.access_token) {
+      throw new Error('Failed to get access token from OAuth exchange');
     }
 
+    // refresh_token may not be returned if user already granted consent before
     return {
       accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
+      refreshToken: tokens.refresh_token || '',
       expiresAt: tokens.expiry_date || Date.now() + 3600 * 1000,
       scope: tokens.scope || '',
     };
