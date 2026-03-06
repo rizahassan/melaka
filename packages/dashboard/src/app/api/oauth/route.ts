@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set(
     'scope',
     [
-      'https://www.googleapis.com/auth/datastore',
       'openid',
       'email',
       'profile',
