@@ -1,23 +1,20 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 
 function MelakaLogo() {
   return (
     <Link href="/" className="flex items-center gap-2">
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="14" cy="14" r="12" stroke="url(#logo-gradient)" strokeWidth="2.5" fill="none" />
-        <path d="M9 18V10l5 4 5-4v8" stroke="url(#logo-gradient)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        <defs>
-          <linearGradient id="logo-gradient" x1="14" y1="0" x2="14" y2="28" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#1a3a8a" />
-            <stop offset="0.5" stopColor="#d4a017" />
-            <stop stopColor="#cc3232" offset="1" />
-          </linearGradient>
-        </defs>
-      </svg>
+      <Image
+        src="/icons/melaka.png"
+        alt="Melaka"
+        width={28}
+        height={28}
+        className="rounded"
+      />
       <span className="text-gradient-logo text-xl font-bold tracking-tight">
         Melaka
       </span>

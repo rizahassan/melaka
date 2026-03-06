@@ -5,6 +5,10 @@ import { AuthProvider } from '@/lib/auth';
 export const metadata: Metadata = {
   title: 'Melaka Dashboard',
   description: 'Translation review dashboard for Melaka',
+  icons: {
+    icon: '/icons/melaka.png',
+    apple: '/icons/melaka.png',
+  },
 };
 
 export default function RootLayout({

@@ -15,18 +15,17 @@ function BackgroundEffects() {
 }
 
 // --- Melaka Logo ---
+import Image from 'next/image';
+
 function MelakaLogo() {
   return (
-    <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-      <defs>
-        <linearGradient id="loginLogoGrad" x1="0" y1="0" x2="44" y2="44">
-          <stop offset="0%" stopColor="#1a3a8a" />
-          <stop offset="100%" stopColor="#2a4faa" />
-        </linearGradient>
-      </defs>
-      <rect width="44" height="44" rx="12" fill="url(#loginLogoGrad)" />
-      <text x="22" y="28" textAnchor="middle" fill="white" fontSize="18" fontWeight="700" fontFamily="system-ui">M</text>
-    </svg>
+    <Image
+      src="/icons/melaka.png"
+      alt="Melaka"
+      width={44}
+      height={44}
+      className="rounded-xl"
+    />
   );
 }
 
