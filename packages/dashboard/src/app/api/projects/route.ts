@@ -1,37 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { MelakaFirestoreDatabase, type ProjectConfig } from '@melaka/cloud/dashboard';
-
-// Initialize Firebase Admin (singleton)
-let firebaseApp: App;
-function getFirebaseApp(): App {
-  if (getApps().length === 0) {
-    // In production, use service account from env
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
-      : undefined;
-
-    firebaseApp = initializeApp({
-      credential: serviceAccount ? cert(serviceAccount) : undefined,
-      projectId: process.env.FIREBASE_PROJECT_ID,
-    });
-  }
-  return firebaseApp || getApps()[0];
-}
-
-// Initialize database
-function getDatabase(): MelakaFirestoreDatabase | null {
-  if (!process.env.ENCRYPTION_KEY) return null;
-  
-  const app = getFirebaseApp();
-  const firestore = getFirestore(app);
-  
-  return new MelakaFirestoreDatabase({
-    firestore,
-    encryptionKey: process.env.ENCRYPTION_KEY,
-  });
-}
+import { type ProjectConfig } from '@melaka/cloud/dashboard';
+import { getDatabase } from '@/lib/firebase-admin';
 
 /**
  * GET /api/projects - List projects for a user
@@ -52,8 +21,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ projects });
   } catch (error) {
     console.error('Failed to list projects:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Provide helpful messages for common Firestore issues
+    if (errorMessage.includes('5 NOT_FOUND')) {
+      return NextResponse.json(
+        { error: 'Firestore database not found. Please create a Firestore database in Native mode in your Firebase Console.' },
+        { status: 500 }
+      );
+    }
+    
+    if (errorMessage.includes('9 FAILED_PRECONDITION') || errorMessage.includes('requires an index')) {
+      return NextResponse.json(
+        { error: 'Firestore index required. Check console logs for the index creation link.', details: errorMessage },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to list projects' },
+      { error: 'Failed to list projects', details: errorMessage },
       { status: 500 }
     );
   }
@@ -105,6 +91,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ project }, { status: 201 });
   } catch (error) {
     console.error('Failed to create project:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    if (errorMessage.includes('5 NOT_FOUND')) {
+      return NextResponse.json(
+        { error: 'Firestore database not found. Please create a Firestore database in Native mode in your Firebase Console.' },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Failed to create project' },
       { status: 500 }

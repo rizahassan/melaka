@@ -1,35 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { MelakaFirestoreDatabase } from '@melaka/cloud/dashboard';
-
-// Initialize Firebase Admin (singleton)
-let firebaseApp: App;
-function getFirebaseApp(): App {
-  if (getApps().length === 0) {
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-      ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
-      : undefined;
-
-    firebaseApp = initializeApp({
-      credential: serviceAccount ? cert(serviceAccount) : undefined,
-      projectId: process.env.FIREBASE_PROJECT_ID,
-    });
-  }
-  return firebaseApp || getApps()[0];
-}
-
-function getDatabase(): MelakaFirestoreDatabase | null {
-  if (!process.env.ENCRYPTION_KEY) return null;
-  
-  const app = getFirebaseApp();
-  const firestore = getFirestore(app);
-  
-  return new MelakaFirestoreDatabase({
-    firestore,
-    encryptionKey: process.env.ENCRYPTION_KEY,
-  });
-}
+import { getDatabase } from '@/lib/firebase-admin';
 
 interface RouteParams {
   params: Promise<{ id: string }>;

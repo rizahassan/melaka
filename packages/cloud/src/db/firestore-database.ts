@@ -21,6 +21,7 @@ const COLLECTIONS = {
   tokens: 'melaka_oauth_tokens',
   usage: 'melaka_usage',
   jobs: 'melaka_jobs',
+  subscriptions: 'melaka_subscriptions',
 } as const;
 
 export interface ProjectDoc {
@@ -78,6 +79,18 @@ export interface TranslationJobDoc {
   fields: Record<string, string>;
   error?: string;
   attempts: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface SubscriptionDoc {
+  userId: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  planId: 'free' | 'pro' | 'enterprise';
+  status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete';
+  currentPeriodEnd: Timestamp;
+  cancelAtPeriodEnd: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -168,13 +181,15 @@ export class MelakaFirestoreDatabase {
     const snapshot = await this.db
       .collection(COLLECTIONS.projects)
       .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
       .get();
 
-    return snapshot.docs.map((doc) => ({
+    const projects = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     })) as (ProjectDoc & { id: string })[];
+    
+    // Sort in memory to avoid requiring a composite index
+    return projects.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
   }
 
   async updateProject(
@@ -396,5 +411,125 @@ export class MelakaFirestoreDatabase {
       id: doc.id,
       ...doc.data(),
     })) as (TranslationJobDoc & { id: string })[];
+  }
+
+  async getJobsByProject(
+    projectId: string,
+    options?: {
+      status?: TranslationJobDoc['status'];
+      limit?: number;
+    }
+  ): Promise<(TranslationJobDoc & { id: string })[]> {
+    let query: FirebaseFirestore.Query = this.db
+      .collection(COLLECTIONS.jobs)
+      .where('projectId', '==', projectId);
+
+    if (options?.status) {
+      query = query.where('status', '==', options.status);
+    }
+
+    const snapshot = await query.limit(options?.limit ?? 200).get();
+
+    const jobs = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as (TranslationJobDoc & { id: string })[];
+
+    // Sort in memory to avoid requiring composite indexes
+    return jobs.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+  }
+
+  // ==================== Subscriptions ====================
+
+  async upsertSubscription(data: {
+    userId: string;
+    stripeCustomerId: string;
+    stripeSubscriptionId: string;
+    planId: 'free' | 'pro' | 'enterprise';
+    status: SubscriptionDoc['status'];
+    currentPeriodEnd: Date;
+    cancelAtPeriodEnd: boolean;
+  }): Promise<void> {
+    const now = Timestamp.now();
+    // Use userId as document ID for easy lookup
+    const docRef = this.db.collection(COLLECTIONS.subscriptions).doc(data.userId);
+    const existing = await docRef.get();
+
+    if (existing.exists) {
+      await docRef.update({
+        stripeCustomerId: data.stripeCustomerId,
+        stripeSubscriptionId: data.stripeSubscriptionId,
+        planId: data.planId,
+        status: data.status,
+        currentPeriodEnd: Timestamp.fromDate(data.currentPeriodEnd),
+        cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+        updatedAt: now,
+      });
+    } else {
+      const subData: SubscriptionDoc = {
+        userId: data.userId,
+        stripeCustomerId: data.stripeCustomerId,
+        stripeSubscriptionId: data.stripeSubscriptionId,
+        planId: data.planId,
+        status: data.status,
+        currentPeriodEnd: Timestamp.fromDate(data.currentPeriodEnd),
+        cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await docRef.set(subData);
+    }
+  }
+
+  async getSubscription(userId: string): Promise<(SubscriptionDoc & { id: string }) | null> {
+    const doc = await this.db.collection(COLLECTIONS.subscriptions).doc(userId).get();
+    if (!doc.exists) return null;
+    return { id: doc.id, ...doc.data() } as SubscriptionDoc & { id: string };
+  }
+
+  async getSubscriptionByStripeCustomerId(stripeCustomerId: string): Promise<(SubscriptionDoc & { id: string }) | null> {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.subscriptions)
+      .where('stripeCustomerId', '==', stripeCustomerId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return null;
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as SubscriptionDoc & { id: string };
+  }
+
+  async getSubscriptionByStripeSubscriptionId(stripeSubscriptionId: string): Promise<(SubscriptionDoc & { id: string }) | null> {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.subscriptions)
+      .where('stripeSubscriptionId', '==', stripeSubscriptionId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return null;
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as SubscriptionDoc & { id: string };
+  }
+
+  async updateSubscriptionStatus(
+    userId: string,
+    status: SubscriptionDoc['status'],
+    updates?: { cancelAtPeriodEnd?: boolean; currentPeriodEnd?: Date }
+  ): Promise<void> {
+    const updateData: Record<string, unknown> = {
+      status,
+      updatedAt: Timestamp.now(),
+    };
+    if (updates?.cancelAtPeriodEnd !== undefined) {
+      updateData.cancelAtPeriodEnd = updates.cancelAtPeriodEnd;
+    }
+    if (updates?.currentPeriodEnd) {
+      updateData.currentPeriodEnd = Timestamp.fromDate(updates.currentPeriodEnd);
+    }
+    await this.db.collection(COLLECTIONS.subscriptions).doc(userId).update(updateData);
+  }
+
+  async deleteSubscription(userId: string): Promise<void> {
+    await this.db.collection(COLLECTIONS.subscriptions).doc(userId).delete();
   }
 }

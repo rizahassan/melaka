@@ -57,10 +57,13 @@ export interface Subscription {
 /**
  * Create a Stripe Checkout session for subscription.
  */
-export async function createCheckoutSession(priceId: string): Promise<string> {
+export async function createCheckoutSession(priceId: string, userId: string): Promise<string> {
   const response = await fetch('/api/stripe/checkout', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': userId,
+    },
     body: JSON.stringify({ priceId }),
   });
 
@@ -75,13 +78,13 @@ export async function createCheckoutSession(priceId: string): Promise<string> {
 /**
  * Redirect to Stripe Checkout.
  */
-export async function redirectToCheckout(priceId: string): Promise<void> {
+export async function redirectToCheckout(priceId: string, userId: string): Promise<void> {
   const stripe = await stripePromise;
   if (!stripe) {
     throw new Error('Stripe not initialized');
   }
 
-  const sessionId = await createCheckoutSession(priceId);
+  const sessionId = await createCheckoutSession(priceId, userId);
   const { error } = await stripe.redirectToCheckout({ sessionId });
 
   if (error) {
@@ -92,13 +95,18 @@ export async function redirectToCheckout(priceId: string): Promise<void> {
 /**
  * Create a Stripe Customer Portal session.
  */
-export async function createPortalSession(): Promise<string> {
+export async function createPortalSession(userId: string): Promise<string> {
   const response = await fetch('/api/stripe/portal', {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': userId,
+    },
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create portal session');
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to create portal session');
   }
 
   const { url } = await response.json();
@@ -108,7 +116,7 @@ export async function createPortalSession(): Promise<string> {
 /**
  * Redirect to Stripe Customer Portal.
  */
-export async function redirectToPortal(): Promise<void> {
-  const url = await createPortalSession();
+export async function redirectToPortal(userId: string): Promise<void> {
+  const url = await createPortalSession(userId);
   window.location.href = url;
 }

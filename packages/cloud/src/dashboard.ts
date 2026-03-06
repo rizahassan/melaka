@@ -16,6 +16,7 @@ export {
   type OAuthTokenDoc,
   type UsageDoc,
   type TranslationJobDoc,
+  type SubscriptionDoc,
 } from './db/firestore-database.js';
 
 export {

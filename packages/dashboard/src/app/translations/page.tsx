@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
+import { useAuth } from '@/lib/auth';
 
 interface Translation {
   id: string;
@@ -17,73 +19,8 @@ interface Translation {
   status: 'completed' | 'pending' | 'failed';
   reviewed: boolean;
   translatedAt?: string;
+  projectName?: string;
 }
-
-// Mock data for development
-const mockTranslations: Translation[] = [
-  {
-    id: '1',
-    collection: 'articles',
-    documentId: 'article-001',
-    language: 'ms-MY',
-    fields: [
-      { name: 'title', source: 'Getting Started with Investing', translation: 'Memulakan Pelaburan' },
-      { name: 'summary', source: 'Learn the basics of investing for beginners', translation: 'Pelajari asas pelaburan untuk pemula' },
-    ],
-    status: 'completed',
-    reviewed: false,
-    translatedAt: '2026-03-02T10:30:00Z',
-  },
-  {
-    id: '2',
-    collection: 'articles',
-    documentId: 'article-002',
-    language: 'zh-CN',
-    fields: [
-      { name: 'title', source: 'Understanding Credit Scores', translation: '了解信用评分' },
-      { name: 'summary', source: 'What affects your credit score and how to improve it', translation: '影响信用评分的因素以及如何改善' },
-    ],
-    status: 'completed',
-    reviewed: true,
-    translatedAt: '2026-03-01T15:45:00Z',
-  },
-  {
-    id: '3',
-    collection: 'quiz',
-    documentId: 'quiz-001',
-    language: 'ms-MY',
-    fields: [
-      { name: 'question', source: 'What is compound interest?', translation: '' },
-    ],
-    status: 'failed',
-    reviewed: false,
-  },
-  {
-    id: '4',
-    collection: 'lessons',
-    documentId: 'lesson-001',
-    language: 'ta-IN',
-    fields: [
-      { name: 'title', source: 'Budgeting Basics', translation: 'பட்ஜெட் அடிப்படைகள்' },
-      { name: 'body', source: 'Learn how to create a budget', translation: 'பட்ஜெட் உருவாக்க கற்றுக்கொள்ளுங்கள்' },
-      { name: 'summary', source: 'A guide to budgeting', translation: 'பட்ஜெட்டிற்கான வழிகாட்டி' },
-    ],
-    status: 'completed',
-    reviewed: false,
-  },
-  {
-    id: '5',
-    collection: 'articles',
-    documentId: 'article-003',
-    language: 'zh-CN',
-    fields: [
-      { name: 'title', source: 'Retirement Planning', translation: '退休规划' },
-      { name: 'summary', source: 'Plan for your future', translation: '规划你的未来' },
-    ],
-    status: 'pending',
-    reviewed: false,
-  },
-];
 
 // --- Background Effects ---
 function BackgroundEffects() {
@@ -213,9 +150,101 @@ function FieldEditor({
 
 // --- Page ---
 export default function TranslationsPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [filter, setFilter] = useState<'all' | 'unreviewed' | 'failed'>('all');
   const [selectedTranslation, setSelectedTranslation] = useState<Translation | null>(null);
-  const [translations, setTranslations] = useState(mockTranslations);
+  const [translations, setTranslations] = useState<Translation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login?redirect=/translations');
+    }
+  }, [user, authLoading, router]);
+
+  // Fetch translations from API
+  useEffect(() => {
+    if (!user) return;
+
+    async function fetchTranslations() {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch('/api/translations', {
+          headers: { 'x-user-id': user!.uid },
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to fetch translations');
+        }
+
+        const data = await res.json();
+
+        // Transform API response (TranslationJobDoc) to Translation format
+        const mapped: Translation[] = (data.translations || []).map(
+          (job: {
+            id: string;
+            documentPath: string;
+            targetLocale: string;
+            fields: Record<string, string>;
+            status: string;
+            createdAt: { _seconds: number } | string;
+            projectName?: string;
+          }) => {
+            // Extract collection and documentId from documentPath (e.g. "articles/article-001")
+            const pathParts = job.documentPath.split('/');
+            const collection = pathParts.slice(0, -1).join('/') || pathParts[0];
+            const documentId = pathParts[pathParts.length - 1];
+
+            // Map fields from Record<string, string> to array format
+            const fieldEntries = Object.entries(job.fields || {}).map(
+              ([name, source]) => ({
+                name,
+                source: source as string,
+                translation: '', // Source fields stored; translations are written to Firestore docs directly
+              })
+            );
+
+            // Map status
+            const statusMap: Record<string, 'completed' | 'pending' | 'failed'> = {
+              completed: 'completed',
+              pending: 'pending',
+              processing: 'pending',
+              failed: 'failed',
+            };
+
+            return {
+              id: job.id,
+              collection,
+              documentId,
+              language: job.targetLocale,
+              fields: fieldEntries,
+              status: statusMap[job.status] || 'pending',
+              reviewed: false,
+              translatedAt:
+                typeof job.createdAt === 'object' && job.createdAt._seconds
+                  ? new Date(job.createdAt._seconds * 1000).toISOString()
+                  : undefined,
+              projectName: job.projectName,
+            };
+          }
+        );
+
+        setTranslations(mapped);
+      } catch (err) {
+        console.error('Failed to fetch translations:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch translations');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchTranslations();
+  }, [user]);
 
   const filteredTranslations = translations.filter((t) => {
     if (filter === 'unreviewed') return !t.reviewed && t.status === 'completed';
@@ -256,7 +285,7 @@ export default function TranslationsPage() {
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-[#1a3a8a] hover:text-[#2a4faa] transition-colors text-base flex items-center gap-1">
+            <Link href="/dashboard" className="text-[#1a3a8a] hover:text-[#2a4faa] transition-colors text-base flex items-center gap-1">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 12L6 8l4-4" />
               </svg>
@@ -273,7 +302,47 @@ export default function TranslationsPage() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center py-20">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-[#1a3a8a] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-[#8090b8]">Loading translations...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="rounded-2xl border border-[rgba(204,50,50,0.2)] bg-[rgba(204,50,50,0.05)] p-6 text-center">
+            <p className="text-[#cc3232] mb-2">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-[#1a3a8a] hover:text-[#2a4faa] transition-colors"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && translations.length === 0 && (
+          <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-12 text-center">
+            <p className="text-white text-lg mb-2">No translations yet</p>
+            <p className="text-[#5a6a8a] text-sm mb-4">
+              Translation jobs will appear here once your connected projects start processing documents.
+            </p>
+            <Link
+              href="/connect"
+              className="inline-block px-5 py-2.5 bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] text-white rounded-xl text-sm font-medium shadow-[0_4px_6px_rgba(26,58,138,0.25)]"
+            >
+              Connect a Project
+            </Link>
+          </div>
+        )}
+
         {/* Two-column layout */}
+        {!loading && !error && translations.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Translation List */}
           <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] overflow-hidden">
@@ -364,6 +433,7 @@ export default function TranslationsPage() {
             )}
           </div>
         </div>
+        )}
       </div>
     </main>
   );

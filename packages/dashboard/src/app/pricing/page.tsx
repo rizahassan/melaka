@@ -3,16 +3,37 @@
 import Link from 'next/link';
 import { PLANS, redirectToCheckout } from '@/lib/stripe';
 import { useState } from 'react';
+import { Header } from '@/components/Header';
+import { useAuth } from '@/lib/auth';
+
+// --- Background Effects ---
+function BackgroundEffects() {
+  return (
+    <>
+      <div className="fixed inset-0 bg-gradient-to-b from-[#080a14] via-[#0c0e1a] to-[#10132a] -z-30" />
+      <div className="fixed top-0 left-0 w-[600px] h-[600px] -z-20" style={{ background: 'radial-gradient(circle at center, rgba(26,58,138,0.12) 0%, transparent 70%)' }} />
+      <div className="fixed top-[200px] left-[calc(50%-151px)] w-[800px] h-[800px] -z-20" style={{ background: 'radial-gradient(circle at center, rgba(212,160,23,0.04) 0%, transparent 70%)' }} />
+      <div className="fixed top-[500px] right-0 w-[500px] h-[500px] -z-20" style={{ background: 'radial-gradient(circle at center, rgba(204,50,50,0.06) 0%, transparent 70%)' }} />
+    </>
+  );
+}
 
 export default function PricingPage() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleSubscribe = async (planId: string, priceId: string | null) => {
     if (!priceId) return;
 
+    if (!user) {
+      // Redirect to login if not authenticated
+      window.location.href = '/login?redirect=/pricing';
+      return;
+    }
+
     setLoading(planId);
     try {
-      await redirectToCheckout(priceId);
+      await redirectToCheckout(priceId, user.uid);
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Failed to start checkout. Please try again.');
@@ -22,37 +43,24 @@ export default function PricingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-indigo-600">
-              🌏 Melaka
-            </Link>
-            <Link
-              href="/login"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-300"
-            >
-              Sign In
-            </Link>
-          </div>
+    <main className="relative min-h-screen">
+      <BackgroundEffects />
+      <div className="noise-overlay" />
+      <Header />
+
+      <div className="relative max-w-7xl mx-auto px-6 pt-8 pb-16 space-y-12">
+        {/* Page Header */}
+        <div className="text-center pt-8">
+          <h1 className="text-gradient-hero text-4xl md:text-5xl font-semibold mb-4">
+            Simple, transparent pricing
+          </h1>
+          <p className="text-lg text-[#8090b8] max-w-2xl mx-auto">
+            Self-host for free, or let us handle everything.
+          </p>
         </div>
-      </header>
 
-      {/* Hero */}
-      <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8 text-center">
-        <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white sm:text-5xl">
-          Simple, transparent pricing
-        </h1>
-        <p className="mt-4 text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
-          Self-host for free, or let us handle everything.
-        </p>
-      </div>
-
-      {/* Pricing Cards */}
-      <div className="max-w-5xl mx-auto px-4 pb-24 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        {/* Pricing Cards */}
+        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Free */}
           <PricingCard
             plan={PLANS.free}
@@ -75,55 +83,49 @@ export default function PricingPage() {
         </div>
 
         {/* Enterprise CTA */}
-        <div className="mt-12 text-center">
-          <p className="text-gray-600 dark:text-gray-400">
+        <div className="text-center">
+          <p className="text-[#8090b8]">
             Need SSO, audit logging, or translation memory?{' '}
-            <a href="mailto:hello@melaka.dev" className="text-indigo-600 hover:text-indigo-500 font-medium">
+            <a href="mailto:hello@melaka.dev" className="text-[#2a4faa] hover:text-[#3058b8] font-medium transition-colors">
               Contact us for Enterprise pricing
             </a>
           </p>
         </div>
-      </div>
 
-      {/* How It Works */}
-      <div className="bg-white dark:bg-gray-800 py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-12">
+        {/* How It Works */}
+        <section>
+          <h2 className="text-2xl font-medium text-white text-center mb-10">
             How Melaka Pro Works
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Step number={1} title="Connect Firebase" description="Sign in with Google and grant Firestore access" />
             <Step number={2} title="Select Collections" description="Choose which collections to translate" />
             <Step number={3} title="Done!" description="Translations happen automatically" />
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* FAQ */}
-      <div className="py-16">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-8">
+        {/* FAQ */}
+        <section className="max-w-3xl mx-auto space-y-6">
+          <h2 className="text-2xl font-medium text-white text-center mb-8">
             Frequently Asked Questions
           </h2>
-          <div className="space-y-6">
-            <FAQ
-              question="Can I use Melaka for free?"
-              answer="Yes! The CLI and SDK are completely free and open source. Self-host your own Cloud Functions with your own AI keys. Pro is for teams who want fully managed translations without any deployment."
-            />
-            <FAQ
-              question="What's the difference between Free and Pro?"
-              answer="Free: You deploy Cloud Functions to your Firebase project and manage your own AI API keys. Pro: We handle everything — just connect your Firebase and we translate automatically. No code, no AI keys needed."
-            />
-            <FAQ
-              question="How does Melaka access my Firestore?"
-              answer="You authenticate with Google OAuth and grant read/write access to specific collections. You can revoke access anytime from your Google account settings."
-            />
-            <FAQ
-              question="Can I cancel anytime?"
-              answer="Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period."
-            />
-          </div>
-        </div>
+          <FAQ
+            question="Can I use Melaka for free?"
+            answer="Yes! The CLI and SDK are completely free and open source. Self-host your own Cloud Functions with your own AI keys. Pro is for teams who want fully managed translations without any deployment."
+          />
+          <FAQ
+            question="What's the difference between Free and Pro?"
+            answer="Free: You deploy Cloud Functions to your Firebase project and manage your own AI API keys. Pro: We handle everything — just connect your Firebase and we translate automatically. No code, no AI keys needed."
+          />
+          <FAQ
+            question="How does Melaka access my Firestore?"
+            answer="You authenticate with Google OAuth and grant read/write access to specific collections. You can revoke access anytime from your Google account settings."
+          />
+          <FAQ
+            question="Can I cancel anytime?"
+            answer="Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period."
+          />
+        </section>
       </div>
     </main>
   );
@@ -146,48 +148,53 @@ function PricingCard({
   featured?: boolean;
   loading: boolean;
 }) {
-  const baseClassName = `mt-8 w-full py-3 rounded-lg font-medium transition-colors block text-center ${
-    buttonVariant === 'primary'
-      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600'
-  } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`;
+  const primaryClassName = `mt-8 w-full py-3 rounded-xl font-medium text-sm text-center block bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] text-white shadow-[0_4px_6px_rgba(26,58,138,0.25)] hover:shadow-[0_6px_12px_rgba(26,58,138,0.35)] transition-shadow ${loading ? 'opacity-50 cursor-not-allowed' : ''}`;
+  const secondaryClassName = `mt-8 w-full py-3 rounded-xl font-medium text-sm text-center block border border-[rgba(255,255,255,0.12)] text-white hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(255,255,255,0.04)] transition-all ${loading ? 'opacity-50 cursor-not-allowed' : ''}`;
+
+  const baseClassName = buttonVariant === 'primary' ? primaryClassName : secondaryClassName;
 
   return (
     <div
-      className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 ${
-        featured ? 'ring-2 ring-indigo-600' : ''
+      className={`relative rounded-2xl border bg-[rgba(255,255,255,0.03)] p-8 ${
+        featured
+          ? 'border-[rgba(26,58,138,0.4)] shadow-[0_0_30px_rgba(26,58,138,0.15)]'
+          : 'border-[rgba(255,255,255,0.06)]'
       }`}
     >
       {featured && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className="bg-indigo-600 text-white text-sm font-medium px-4 py-1 rounded-full">
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span className="bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] text-white text-xs font-medium px-4 py-1 rounded-full shadow-[0_4px_6px_rgba(26,58,138,0.25)]">
             Recommended
           </span>
         </div>
       )}
 
       <div className="text-center">
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-lg font-medium text-white">
           {plan.name}
         </h3>
         <div className="mt-4">
-          <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
+          <span className="text-4xl font-semibold text-white">
             ${plan.price}
           </span>
           {plan.price > 0 && (
-            <span className="text-gray-500 dark:text-gray-400">/month</span>
+            <span className="text-[#8090b8]">/month</span>
           )}
         </div>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-2 text-sm text-[#5a6a8a]">
           {plan.price === 0 ? 'Self-hosted' : 'Fully managed'}
         </p>
       </div>
 
-      <ul className="mt-8 space-y-4">
+      <ul className="mt-8 space-y-3">
         {plan.features.map((feature, i) => (
           <li key={i} className="flex items-start gap-3">
-            <span className="text-green-500 mt-0.5">✓</span>
-            <span className="text-gray-600 dark:text-gray-300">{feature}</span>
+            <span className="text-[#22c55e] mt-0.5 shrink-0">
+              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 8l3 3 5-5" />
+              </svg>
+            </span>
+            <span className="text-sm text-[#8090b8]">{feature}</span>
           </li>
         ))}
       </ul>
@@ -207,23 +214,23 @@ function PricingCard({
 
 function Step({ number, title, description }: { number: number; title: string; description: string }) {
   return (
-    <div className="text-center">
-      <div className="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto">
+    <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-6 text-center">
+      <div className="w-12 h-12 bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] text-white rounded-full flex items-center justify-center text-lg font-semibold mx-auto shadow-[0_4px_12px_rgba(26,58,138,0.3)]">
         {number}
       </div>
-      <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">{title}</h3>
-      <p className="mt-2 text-gray-500 dark:text-gray-400">{description}</p>
+      <h3 className="mt-4 text-base font-medium text-white">{title}</h3>
+      <p className="mt-2 text-sm text-[#8090b8]">{description}</p>
     </div>
   );
 }
 
 function FAQ({ question, answer }: { question: string; answer: string }) {
   return (
-    <div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+    <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-6">
+      <h3 className="text-base font-medium text-white mb-2">
         {question}
       </h3>
-      <p className="mt-2 text-gray-600 dark:text-gray-400">{answer}</p>
+      <p className="text-sm text-[#8090b8] leading-relaxed">{answer}</p>
     </div>
   );
 }

@@ -25,6 +25,7 @@ export {
   type OAuthTokenDoc,
   type UsageDoc,
   type TranslationJobDoc,
+  type SubscriptionDoc,
 } from './db/index.js';
 
 // ==================== Cloud Tasks ====================

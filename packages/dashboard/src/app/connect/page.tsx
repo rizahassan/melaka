@@ -6,6 +6,16 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/lib/auth';
 
+// --- Background Effects ---
+function BackgroundEffects() {
+  return (
+    <>
+      <div className="fixed inset-0 bg-gradient-to-b from-[#080a14] via-[#0c0e1a] to-[#10132a] -z-30" />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] -z-20" style={{ background: 'radial-gradient(circle at center, rgba(26,58,138,0.12) 0%, transparent 70%)' }} />
+    </>
+  );
+}
+
 function ConnectContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -25,7 +35,10 @@ function ConnectContent() {
   if (authLoading) {
     return (
       <div className="flex justify-center py-20">
-        <p className="text-gray-500">Checking authentication...</p>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#1a3a8a] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-[#8090b8]">Checking authentication...</p>
+        </div>
       </div>
     );
   }
@@ -52,35 +65,35 @@ function ConnectContent() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
+    <div className="relative max-w-2xl mx-auto px-6 pt-8 pb-16">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-2xl font-medium text-white">
           Connect Your Firebase Project
         </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
+        <p className="mt-2 text-sm text-[#8090b8]">
           Grant Melaka access to translate your Firestore collections automatically.
         </p>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-600 dark:text-red-400">
+        <div className="mb-6 p-4 rounded-xl border border-[rgba(204,50,50,0.2)] bg-[rgba(204,50,50,0.05)]">
+          <p className="text-[#cc3232] text-sm">
             {error === 'access_denied'
               ? 'Access was denied. Please try again and approve the permissions.'
               : `Connection failed: ${error}`}
           </p>
           {errorDetail && (
-            <p className="mt-2 text-sm text-red-500 dark:text-red-400">
+            <p className="mt-2 text-xs text-[#cc3232]/70">
               Details: {errorDetail}
             </p>
           )}
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-8">
+      <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-8">
         {/* Step 1: Project ID */}
         <div className="mb-8">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-[#8090b8] mb-1.5">
             Firebase Project ID
           </label>
           <input
@@ -88,29 +101,41 @@ function ConnectContent() {
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
             placeholder="my-firebase-project"
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-4 py-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-white placeholder-[#5a6a8a] focus:outline-none focus:ring-1 focus:ring-[#2a4faa] focus:border-[#2a4faa] transition-colors"
           />
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-xs text-[#5a6a8a]">
             Find this in your Firebase Console → Project Settings
           </p>
         </div>
 
         {/* Permissions Info */}
-        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-          <h3 className="font-medium text-gray-900 dark:text-white mb-2">
-            Permissions we'll request:
+        <div className="mb-8 p-4 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]">
+          <h3 className="font-medium text-white text-sm mb-2">
+            Permissions we&apos;ll request:
           </h3>
-          <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+          <ul className="text-sm text-[#8090b8] space-y-1.5">
             <li className="flex items-center gap-2">
-              <span className="text-green-500">✓</span>
+              <span className="text-[#22c55e]">
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 8l3 3 5-5" />
+                </svg>
+              </span>
               Read your Firestore collections
             </li>
             <li className="flex items-center gap-2">
-              <span className="text-green-500">✓</span>
+              <span className="text-[#22c55e]">
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 8l3 3 5-5" />
+                </svg>
+              </span>
               Write to i18n subcollections (translations only)
             </li>
             <li className="flex items-center gap-2">
-              <span className="text-green-500">✓</span>
+              <span className="text-[#22c55e]">
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 8l3 3 5-5" />
+                </svg>
+              </span>
               View your Google account email
             </li>
           </ul>
@@ -120,7 +145,7 @@ function ConnectContent() {
         <button
           onClick={handleConnect}
           disabled={loading || !projectId.trim()}
-          className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3 bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] text-white rounded-xl font-medium text-sm shadow-[0_4px_6px_rgba(26,58,138,0.25)] hover:shadow-[0_6px_12px_rgba(26,58,138,0.35)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-shadow"
         >
           {loading ? (
             'Redirecting to Google...'
@@ -150,13 +175,13 @@ function ConnectContent() {
         </button>
 
         {/* Security Note */}
-        <p className="mt-4 text-xs text-center text-gray-500 dark:text-gray-400">
+        <p className="mt-4 text-xs text-center text-[#5a6a8a]">
           You can revoke access anytime from your{' '}
           <a
             href="https://myaccount.google.com/permissions"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-indigo-600 hover:text-indigo-500"
+            className="text-[#2a4faa] hover:text-[#3058b8] transition-colors"
           >
             Google Account Settings
           </a>
@@ -165,8 +190,11 @@ function ConnectContent() {
 
       {/* Back Link */}
       <p className="mt-6 text-center">
-        <Link href="/" className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-          ← Back to Dashboard
+        <Link href="/dashboard" className="text-sm text-[#5a6a8a] hover:text-[#8090b8] transition-colors flex items-center justify-center gap-1">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 11L5 7l4-4" />
+          </svg>
+          Back to Dashboard
         </Link>
       </p>
     </div>
@@ -175,9 +203,15 @@ function ConnectContent() {
 
 export default function ConnectPage() {
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <main className="relative min-h-screen">
+      <BackgroundEffects />
+      <div className="noise-overlay" />
       <Header />
-      <Suspense fallback={<div className="flex justify-center py-20">Loading...</div>}>
+      <Suspense fallback={
+        <div className="flex justify-center py-20">
+          <div className="w-8 h-8 border-2 border-[#1a3a8a] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }>
         <ConnectContent />
       </Suspense>
     </main>

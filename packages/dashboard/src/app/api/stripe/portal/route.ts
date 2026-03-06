@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { getDatabase } from '@/lib/firebase-admin';
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -13,18 +14,29 @@ function getStripe() {
 
 export async function POST(request: NextRequest) {
   try {
-    const stripe = getStripe();
-    const { customerId } = await request.json().catch(() => ({}));
+    const userId = request.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!customerId) {
+    const stripe = getStripe();
+
+    // Look up customer from subscription database
+    const db = getDatabase();
+    if (!db) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
+
+    const subscription = await db.getSubscription(userId);
+    if (!subscription?.stripeCustomerId) {
       return NextResponse.json(
-        { error: 'Customer ID required' },
-        { status: 400 }
+        { error: 'No active subscription found' },
+        { status: 404 }
       );
     }
 
     const session = await stripe.billingPortal.sessions.create({
-      customer: customerId,
+      customer: subscription.stripeCustomerId,
       return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings`,
     });
 

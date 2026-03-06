@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { getDatabase } from '@/lib/firebase-admin';
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -9,6 +10,18 @@ function getStripe() {
   return new Stripe(key, {
     apiVersion: '2025-02-24.acacia',
   });
+}
+
+/**
+ * Map Stripe price ID to plan ID.
+ */
+function getPlanFromPrice(priceId: string): 'free' | 'pro' | 'enterprise' {
+  const proPriceId = process.env.STRIPE_PRO_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID;
+  const enterprisePriceId = process.env.STRIPE_ENTERPRISE_PRICE_ID;
+
+  if (priceId === proPriceId) return 'pro';
+  if (priceId === enterprisePriceId) return 'enterprise';
+  return 'pro'; // Default to pro for unknown prices
 }
 
 export async function POST(request: NextRequest) {
@@ -34,33 +47,110 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
+  const db = getDatabase();
+  if (!db) {
+    console.error('Database not configured');
+    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log('Checkout completed:', session.id);
-        // TODO: Update user subscription in your database
+        const userId = session.client_reference_id || session.metadata?.userId;
+
+        if (!userId) {
+          console.error('No userId found in checkout session:', session.id);
+          break;
+        }
+
+        const stripe = getStripe();
+        const subscriptionId = session.subscription as string;
+
+        if (subscriptionId) {
+          // Fetch the full subscription to get details
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const priceId = subscription.items.data[0]?.price?.id || '';
+
+          await db.upsertSubscription({
+            userId,
+            stripeCustomerId: session.customer as string,
+            stripeSubscriptionId: subscriptionId,
+            planId: getPlanFromPrice(priceId),
+            status: 'active',
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          });
+
+          console.log(`Subscription created for user ${userId}: ${subscriptionId}`);
+        }
         break;
       }
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription updated:', subscription.id);
-        // TODO: Update subscription status in your database
+        const customerId = subscription.customer as string;
+
+        // Find user by stripe customer ID
+        const existingSub = await db.getSubscriptionByStripeCustomerId(customerId);
+        if (!existingSub) {
+          console.error('No subscription found for customer:', customerId);
+          break;
+        }
+
+        const priceId = subscription.items.data[0]?.price?.id || '';
+        const status = subscription.status === 'active'
+          ? 'active'
+          : subscription.status === 'trialing'
+            ? 'trialing'
+            : subscription.status === 'past_due'
+              ? 'past_due'
+              : 'canceled';
+
+        await db.upsertSubscription({
+          userId: existingSub.userId,
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscription.id,
+          planId: getPlanFromPrice(priceId),
+          status,
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        });
+
+        console.log(`Subscription updated for user ${existingSub.userId}: ${status}`);
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription canceled:', subscription.id);
-        // TODO: Mark subscription as canceled in your database
+        const customerId = subscription.customer as string;
+
+        const existingSub = await db.getSubscriptionByStripeCustomerId(customerId);
+        if (!existingSub) {
+          console.error('No subscription found for customer:', customerId);
+          break;
+        }
+
+        await db.updateSubscriptionStatus(existingSub.userId, 'canceled', {
+          cancelAtPeriodEnd: false,
+        });
+
+        console.log(`Subscription canceled for user ${existingSub.userId}`);
         break;
       }
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        console.log('Payment failed:', invoice.id);
-        // TODO: Handle failed payment (notify user, update status)
+        const customerId = invoice.customer as string;
+
+        const existingSub = await db.getSubscriptionByStripeCustomerId(customerId);
+        if (!existingSub) {
+          console.error('No subscription found for customer:', customerId);
+          break;
+        }
+
+        await db.updateSubscriptionStatus(existingSub.userId, 'past_due');
+        console.log(`Payment failed for user ${existingSub.userId}`);
         break;
       }
 
