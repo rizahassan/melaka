@@ -198,6 +198,18 @@ export class MelakaFirestoreDatabase {
     await this.db.collection(COLLECTIONS.projects).doc(projectId).delete();
   }
 
+  async getProjectsByFirebaseProjectId(firebaseProjectId: string): Promise<(ProjectDoc & { id: string })[]> {
+    const snapshot = await this.db
+      .collection(COLLECTIONS.projects)
+      .where('firebaseProjectId', '==', firebaseProjectId)
+      .get();
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as (ProjectDoc & { id: string })[];
+  }
+
   // ==================== OAuth Tokens ====================
 
   async storeTokens(data: {

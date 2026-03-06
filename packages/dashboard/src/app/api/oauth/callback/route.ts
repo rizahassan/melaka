@@ -91,8 +91,32 @@ export async function GET(request: NextRequest) {
 
     // Store encrypted tokens in Firestore
     console.log('Storing tokens in Firestore...');
+    
+    // Check if a project with this Firebase project ID already exists for this user
+    const existingProjects = await db.getProjectsByFirebaseProjectId(projectId);
+    let melakaProjectId: string;
+    
+    if (existingProjects.length === 0) {
+      console.log('Project does not exist, creating...');
+      const newProject = await db.createProject({
+        userId,
+        firebaseProjectId: projectId,
+        name: projectId, // Use projectId as name for now
+        config: {
+          collections: [],
+          sourceLocale: 'en',
+          targetLocales: [],
+        },
+      });
+      melakaProjectId = newProject.id;
+      console.log('Project created with ID:', melakaProjectId);
+    } else {
+      melakaProjectId = existingProjects[0].id;
+      console.log('Using existing project:', melakaProjectId);
+    }
+    
     await db.storeTokens({
-      projectId,
+      projectId: melakaProjectId,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt: new Date(tokens.expiresAt),
