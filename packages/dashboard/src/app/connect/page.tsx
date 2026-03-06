@@ -2,14 +2,33 @@
 
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
+import { useAuth } from '@/lib/auth';
 
 function ConnectContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const error = searchParams.get('error');
+  const errorDetail = searchParams.get('detail');
   const [projectId, setProjectId] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Redirect to login if not authenticated
+  if (!authLoading && !user) {
+    router.push('/login?redirect=/connect');
+    return null;
+  }
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="flex justify-center py-20">
+        <p className="text-gray-500">Checking authentication...</p>
+      </div>
+    );
+  }
 
   const handleConnect = async () => {
     if (!projectId.trim()) {
@@ -17,10 +36,16 @@ function ConnectContent() {
       return;
     }
 
+    if (!user) {
+      alert('Please sign in first');
+      router.push('/login?redirect=/connect');
+      return;
+    }
+
     setLoading(true);
 
-    // Get user ID (in production, get from auth)
-    const userId = 'demo-user'; // TODO: Replace with actual user ID
+    // Use actual user ID from Firebase Auth
+    const userId = user.uid;
 
     // Redirect to OAuth flow
     window.location.href = `/api/oauth?userId=${encodeURIComponent(userId)}&projectId=${encodeURIComponent(projectId)}`;
@@ -44,6 +69,11 @@ function ConnectContent() {
               ? 'Access was denied. Please try again and approve the permissions.'
               : `Connection failed: ${error}`}
           </p>
+          {errorDetail && (
+            <p className="mt-2 text-sm text-red-500 dark:text-red-400">
+              Details: {errorDetail}
+            </p>
+          )}
         </div>
       )}
 
