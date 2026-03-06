@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
     'scope',
     [
       'https://www.googleapis.com/auth/datastore',
-      'https://www.googleapis.com/auth/cloud-platform.read-only',
       'openid',
       'email',
       'profile',
