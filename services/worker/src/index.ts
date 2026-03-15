@@ -2,11 +2,10 @@
  * Melaka Cloud Worker Service
  * 
  * Processes translation tasks from Cloud Tasks queue.
- * Uses shared translation utilities from @melaka/cloud.
+ * Standalone service - no workspace dependencies.
  */
 
 import express from 'express';
-import { translateFields } from '@melaka/cloud';
 
 const app = express();
 app.use(express.json());
@@ -16,6 +15,69 @@ const CONFIG = {
   geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-04-17',
   port: process.env.PORT || '8080',
 };
+
+// Translate fields using Gemini
+async function translateFields(
+  fields: Record<string, string>,
+  sourceLocale: string,
+  targetLocale: string
+): Promise<Record<string, string>> {
+  const fieldList = Object.entries(fields)
+    .map(([key, value]) => `"${key}": "${escapeForJson(value)}"`)
+    .join(',\n  ');
+
+  const prompt = `Translate the following JSON fields from ${sourceLocale} to ${targetLocale}.
+Return ONLY a valid JSON object with the same keys and translated values.
+
+Input:
+{
+  ${fieldList}
+}
+
+Output (translated JSON):`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.geminiModel}:generateContent?key=${CONFIG.geminiApiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Gemini API error: ${error}`);
+  }
+
+  const data = await response.json() as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+    }>;
+  };
+  
+  const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textResponse) {
+    throw new Error('No response from Gemini');
+  }
+
+  return JSON.parse(textResponse);
+}
+
+function escapeForJson(str: string): string {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
 
 // Write to Firestore via REST API
 async function writeToFirestoreRest(
@@ -28,7 +90,6 @@ async function writeToFirestoreRest(
   const i18nPath = `${documentPath}/i18n/${locale}`;
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${i18nPath}`;
   
-  // Convert fields to Firestore format
   const firestoreFields: Record<string, { stringValue: string }> = {};
   for (const [key, value] of Object.entries(fields)) {
     firestoreFields[key] = { stringValue: value };
@@ -75,23 +136,15 @@ app.post('/translate', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Translate using shared utility
-    const result = await translateFields(
-      fields,
-      { sourceLocale, targetLocale },
-      { apiKey: CONFIG.geminiApiKey, model: CONFIG.geminiModel }
-    );
-
-    if (!result.success || !result.translations) {
-      throw new Error(result.error || 'Translation failed');
-    }
+    // Translate using Gemini
+    const translations = await translateFields(fields, sourceLocale, targetLocale);
 
     // Write to customer Firestore via REST API
     await writeToFirestoreRest(
       firebaseProjectId,
       documentPath,
       targetLocale,
-      result.translations,
+      translations,
       accessToken
     );
 
@@ -102,7 +155,7 @@ app.post('/translate', async (req, res) => {
       success: true,
       documentPath,
       targetLocale,
-      fieldsTranslated: Object.keys(result.translations).length,
+      fieldsTranslated: Object.keys(translations).length,
       durationMs: duration,
     });
   } catch (err) {

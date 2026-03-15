@@ -1,51 +1,26 @@
-# Melaka Worker Service - Monorepo Build
+# Melaka Worker Service - Standalone Build
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Copy package files
+COPY services/worker/package.json ./
+COPY services/worker/tsconfig.json ./
+COPY services/worker/src ./src
 
-# Copy workspace files
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
-COPY packages/core/package.json ./packages/core/
-COPY packages/ai/package.json ./packages/ai/
-COPY packages/cloud/package.json ./packages/cloud/
-COPY services/worker/package.json ./services/worker/
-
-# Install dependencies
-RUN pnpm install --frozen-lockfile
-
-# Copy source files
-COPY packages/core/ ./packages/core/
-COPY packages/ai/ ./packages/ai/
-COPY packages/cloud/ ./packages/cloud/
-COPY services/worker/ ./services/worker/
-
-# Build packages and service
-RUN pnpm --filter @melaka/core build
-RUN pnpm --filter @melaka/ai build
-RUN pnpm --filter @melaka/cloud build
-RUN pnpm --filter melaka-worker build
+# Install dependencies and build
+RUN npm install
+RUN npm run build
 
 # Production image
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy built packages and dependencies
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/core/dist ./packages/core/dist
-COPY --from=builder /app/packages/core/package.json ./packages/core/
-COPY --from=builder /app/packages/ai/dist ./packages/ai/dist
-COPY --from=builder /app/packages/ai/package.json ./packages/ai/
-COPY --from=builder /app/packages/cloud/dist ./packages/cloud/dist
-COPY --from=builder /app/packages/cloud/package.json ./packages/cloud/
-COPY --from=builder /app/services/worker/dist ./services/worker/dist
-COPY --from=builder /app/services/worker/package.json ./services/worker/
-COPY --from=builder /app/services/worker/node_modules ./services/worker/node_modules
-
-WORKDIR /app/services/worker
+# Copy built files and production deps
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+RUN npm install --omit=dev
 
 EXPOSE 8080
 

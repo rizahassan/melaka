@@ -2,14 +2,14 @@
  * Melaka Cloud Listener Service
  * 
  * Watches connected customer Firestore collections and queues translations.
- * Uses Firestore REST API for customer projects (OAuth tokens).
+ * Standalone service - no workspace dependencies.
  */
 
 import express from 'express';
 import { initializeApp, cert, type App } from 'firebase-admin/app';
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { CloudTasksClient } from '@google-cloud/tasks';
-import { decrypt, encrypt } from '@melaka/cloud';
+import * as crypto from 'crypto';
 
 const app = express();
 app.use(express.json());
@@ -27,6 +27,27 @@ const CONFIG = {
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   port: process.env.PORT || '8080',
 };
+
+// Encryption helpers (AES-256-GCM)
+function decrypt(encryptedData: string, key: string): string {
+  const keyBuffer = crypto.createHash('sha256').update(key).digest();
+  const data = Buffer.from(encryptedData, 'base64');
+  const iv = data.subarray(0, 12);
+  const tag = data.subarray(12, 28);
+  const encrypted = data.subarray(28);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, iv);
+  decipher.setAuthTag(tag);
+  return decipher.update(encrypted) + decipher.final('utf8');
+}
+
+function encrypt(text: string, key: string): string {
+  const keyBuffer = crypto.createHash('sha256').update(key).digest();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', keyBuffer, iv);
+  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, encrypted]).toString('base64');
+}
 
 // Types
 interface ProjectDoc {
@@ -46,7 +67,7 @@ interface TokenDoc {
   expiresAt: FirebaseFirestore.Timestamp;
 }
 
-// Initialize Melaka's own Firestore (for reading project configs)
+// Initialize Melaka's own Firestore
 let melakaApp: App;
 let melakaDb: Firestore;
 
@@ -88,7 +109,7 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
     throw new Error(`Token refresh failed: ${error}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { access_token: string; expires_in: number };
   return {
     accessToken: data.access_token,
     expiresIn: data.expires_in,
@@ -150,14 +171,14 @@ async function firestoreRestList(
     throw new Error(`Firestore REST error: ${response.status} - ${error}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { documents?: FirestoreDocument[] };
   return data.documents || [];
 }
 
 // Parse Firestore REST document to plain object
 function parseFirestoreDoc(doc: FirestoreDocument): { path: string; fields: Record<string, string> } {
   const fields: Record<string, string> = {};
-  const pathParts = doc.name.split('/documents/')[1]; // collection/docId
+  const pathParts = doc.name.split('/documents/')[1];
   
   if (doc.fields) {
     for (const [key, value] of Object.entries(doc.fields)) {
@@ -170,8 +191,8 @@ function parseFirestoreDoc(doc: FirestoreDocument): { path: string; fields: Reco
   return { path: pathParts, fields };
 }
 
-// Track processed documents to avoid re-translating
-const processedDocs = new Map<string, string>(); // docPath -> hash of fields
+// Track processed documents
+const processedDocs = new Map<string, string>();
 
 function hashFields(fields: Record<string, string>): string {
   return JSON.stringify(fields);
@@ -203,12 +224,10 @@ async function pollProject(project: ProjectDoc, accessToken: string): Promise<nu
         const docKey = `${project.id}:${parsed.path}`;
         const currentHash = hashFields(parsed.fields);
         
-        // Check if we already processed this exact version
         if (processedDocs.get(docKey) === currentHash) {
           continue;
         }
         
-        // Extract translatable fields
         const translatableData: Record<string, string> = {};
         for (const field of fields) {
           if (typeof parsed.fields[field] === 'string' && parsed.fields[field].trim()) {
@@ -221,7 +240,6 @@ async function pollProject(project: ProjectDoc, accessToken: string): Promise<nu
           continue;
         }
         
-        // Queue translation for each target locale
         for (const targetLocale of targetLocales) {
           queueTranslation({
             projectId: project.id,
@@ -262,7 +280,6 @@ async function pollAllProjects(): Promise<void> {
     for (const doc of snapshot.docs) {
       const project = { id: doc.id, ...doc.data() } as ProjectDoc;
       
-      // Get OAuth tokens
       const tokenDoc = await melakaDb.collection('melaka_oauth_tokens').doc(project.id).get();
       if (!tokenDoc.exists) {
         console.log(`No tokens for project ${project.id}, skipping`);
@@ -271,13 +288,11 @@ async function pollAllProjects(): Promise<void> {
 
       const tokenData = tokenDoc.data() as TokenDoc;
       
-      // Check if token is expired or will expire soon (5 min buffer)
       const expiresAt = tokenData.expiresAt?.toDate?.() || new Date(0);
-      const bufferTime = 5 * 60 * 1000; // 5 minutes
+      const bufferTime = 5 * 60 * 1000;
       let accessToken: string;
       
       if (expiresAt.getTime() - bufferTime < Date.now()) {
-        // Token expired or expiring soon - refresh it
         console.log(`Refreshing token for project ${project.id}...`);
         
         if (!tokenData.refreshTokenEncrypted) {
@@ -290,7 +305,6 @@ async function pollAllProjects(): Promise<void> {
           const newTokens = await refreshAccessToken(refreshToken);
           accessToken = newTokens.accessToken;
           
-          // Update stored tokens
           const newExpiresAt = new Date(Date.now() + newTokens.expiresIn * 1000);
           await melakaDb.collection('melaka_oauth_tokens').doc(project.id).update({
             accessTokenEncrypted: encrypt(newTokens.accessToken, CONFIG.encryptionKey),
@@ -336,7 +350,7 @@ app.post('/sync', async (_req, res) => {
   }
 });
 
-// Webhook endpoint for real-time triggers (future)
+// Webhook endpoint
 app.post('/webhook', (req, res) => {
   console.log('Webhook received:', req.body);
   res.json({ received: true });
@@ -351,10 +365,8 @@ app.listen(PORT, async () => {
     initMelakaFirestore();
     console.log('Connected to Melaka Firestore');
     
-    // Initial poll
     await pollAllProjects();
     
-    // Poll every 30 seconds
     setInterval(pollAllProjects, 30 * 1000);
     
     console.log('Listener service ready (polling mode)');

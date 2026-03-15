@@ -8,7 +8,6 @@
     "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
-    "@melaka/cloud": "workspace:*",
     "express": "^4.18.2"
   },
   "devDependencies": {
