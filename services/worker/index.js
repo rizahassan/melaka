@@ -2,12 +2,10 @@
  * Melaka Cloud Worker Service
  * 
  * Processes translation tasks from Cloud Tasks queue.
- * Uses Gemini for translations, writes to customer Firestore.
+ * Uses Gemini for translations, writes to customer Firestore via REST API.
  */
 
 import express from 'express';
-import { initializeApp, getApps, deleteApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 
 const app = express();
 app.use(express.json());
@@ -49,6 +47,39 @@ async function translateWithGemini(text, sourceLocale, targetLocale) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 }
 
+// Write to Firestore via REST API
+async function writeToFirestoreRest(projectId, documentPath, locale, fields, accessToken) {
+  // documentPath is like "articles/abc123"
+  // We need to write to "articles/abc123/i18n/ms"
+  const i18nPath = `${documentPath}/i18n/${locale}`;
+  
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${i18nPath}`;
+  
+  // Convert fields to Firestore format
+  const firestoreFields = {};
+  for (const [key, value] of Object.entries(fields)) {
+    firestoreFields[key] = { stringValue: value };
+  }
+  
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fields: firestoreFields,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Firestore write error: ${response.status} - ${error}`);
+  }
+
+  return await response.json();
+}
+
 // Health check
 app.get('/', (req, res) => {
   res.json({ service: 'melaka-worker', status: 'healthy' });
@@ -76,60 +107,39 @@ app.post('/translate', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Initialize customer's Firestore
-    const customerAppName = `worker-${projectId}-${Date.now()}`;
-    let customerApp;
+    // Translate each field
+    const translatedFields = {};
     
-    try {
-      customerApp = initializeApp({
-        projectId: firebaseProjectId,
-        credential: {
-          getAccessToken: async () => ({
-            access_token: accessToken,
-            expires_in: 3600,
-          }),
-        },
-      }, customerAppName);
-    } catch (err) {
-      console.error('Failed to initialize customer app:', err);
-      return res.status(500).json({ error: 'Failed to initialize customer Firestore' });
-    }
-
-    const customerDb = getFirestore(customerApp);
-
-    try {
-      // Translate each field
-      const translatedFields = {};
-      
-      for (const [fieldName, fieldValue] of Object.entries(fields)) {
-        if (typeof fieldValue === 'string' && fieldValue.trim()) {
-          console.log(`  Translating ${fieldName}...`);
-          translatedFields[fieldName] = await translateWithGemini(
-            fieldValue,
-            sourceLocale,
-            targetLocale
-          );
-        }
+    for (const [fieldName, fieldValue] of Object.entries(fields)) {
+      if (typeof fieldValue === 'string' && fieldValue.trim()) {
+        console.log(`  Translating ${fieldName}...`);
+        translatedFields[fieldName] = await translateWithGemini(
+          fieldValue,
+          sourceLocale,
+          targetLocale
+        );
       }
-
-      // Write to i18n subcollection
-      const i18nDocRef = customerDb.doc(`${documentPath}/i18n/${targetLocale}`);
-      await i18nDocRef.set(translatedFields, { merge: true });
-
-      const duration = Date.now() - startTime;
-      console.log(`Completed translation in ${duration}ms: ${documentPath}/i18n/${targetLocale}`);
-
-      res.json({
-        success: true,
-        documentPath,
-        targetLocale,
-        fieldsTranslated: Object.keys(translatedFields).length,
-        durationMs: duration,
-      });
-    } finally {
-      // Cleanup customer app
-      await deleteApp(customerApp);
     }
+
+    // Write to customer Firestore via REST API
+    await writeToFirestoreRest(
+      firebaseProjectId,
+      documentPath,
+      targetLocale,
+      translatedFields,
+      accessToken
+    );
+
+    const duration = Date.now() - startTime;
+    console.log(`Completed translation in ${duration}ms: ${documentPath}/i18n/${targetLocale}`);
+
+    res.json({
+      success: true,
+      documentPath,
+      targetLocale,
+      fieldsTranslated: Object.keys(translatedFields).length,
+      durationMs: duration,
+    });
   } catch (err) {
     console.error('Translation error:', err);
     res.status(500).json({ error: err.message });
