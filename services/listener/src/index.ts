@@ -9,7 +9,7 @@ import express from 'express';
 import { initializeApp, cert, type App } from 'firebase-admin/app';
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { CloudTasksClient } from '@google-cloud/tasks';
-import * as crypto from 'crypto';
+import { createDecipheriv, createCipheriv, randomBytes, scryptSync } from 'crypto';
 
 const app = express();
 app.use(express.json());
@@ -28,25 +28,39 @@ const CONFIG = {
   port: process.env.PORT || '8080',
 };
 
-// Encryption helpers (AES-256-GCM)
-function decrypt(encryptedData: string, key: string): string {
-  const keyBuffer = crypto.createHash('sha256').update(key).digest();
-  const data = Buffer.from(encryptedData, 'base64');
-  const iv = data.subarray(0, 12);
-  const tag = data.subarray(12, 28);
-  const encrypted = data.subarray(28);
-  const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, iv);
+// Encryption helpers (AES-256-GCM with scrypt key derivation)
+const ALGORITHM = 'aes-256-gcm';
+
+function decrypt(ciphertext: string, encryptionKey: string): string {
+  const [saltB64, ivB64, tagB64, encryptedB64] = ciphertext.split(':');
+
+  const salt = Buffer.from(saltB64, 'base64');
+  const iv = Buffer.from(ivB64, 'base64');
+  const tag = Buffer.from(tagB64, 'base64');
+  const encrypted = Buffer.from(encryptedB64, 'base64');
+
+  const key = scryptSync(encryptionKey, salt, 32);
+  const decipher = createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);
+
   return decipher.update(encrypted) + decipher.final('utf8');
 }
 
-function encrypt(text: string, key: string): string {
-  const keyBuffer = crypto.createHash('sha256').update(key).digest();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', keyBuffer, iv);
-  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+function encrypt(plaintext: string, encryptionKey: string): string {
+  const salt = randomBytes(16);
+  const iv = randomBytes(12);
+  const key = scryptSync(encryptionKey, salt, 32);
+
+  const cipher = createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, encrypted]).toString('base64');
+
+  return [
+    salt.toString('base64'),
+    iv.toString('base64'),
+    tag.toString('base64'),
+    encrypted.toString('base64'),
+  ].join(':');
 }
 
 // Types
