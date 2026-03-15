@@ -130,6 +130,7 @@ app.post('/translate', async (req, res) => {
     } = req.body;
 
     console.log(`Processing translation: ${documentPath} -> ${targetLocale}`);
+    console.log(`Token prefix: ${accessToken?.substring(0, 20)}...`);
 
     if (!firebaseProjectId || !documentPath || !fields || !accessToken) {
       console.error('Missing required fields');
