@@ -6,10 +6,10 @@
  */
 
 import express from 'express';
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { initializeApp, cert, type App } from 'firebase-admin/app';
+import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { CloudTasksClient } from '@google-cloud/tasks';
-import { createDecipheriv, scryptSync } from 'crypto';
+import { decrypt, encrypt } from '@melaka/cloud';
 
 const app = express();
 app.use(express.json());
@@ -18,22 +18,40 @@ app.use(express.json());
 const CONFIG = {
   melakaProjectId: process.env.FIREBASE_PROJECT_ID || 'melaka-cloud',
   serviceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
-  encryptionKey: process.env.ENCRYPTION_KEY,
+  encryptionKey: process.env.ENCRYPTION_KEY || '',
   cloudTasksProject: process.env.CLOUD_TASKS_PROJECT_ID || 'melaka-cloud',
   cloudTasksLocation: process.env.CLOUD_TASKS_LOCATION || 'us-central1',
   cloudTasksQueue: process.env.CLOUD_TASKS_QUEUE_NAME || 'melaka-translations',
-  workerUrl: process.env.CLOUD_TASKS_SERVICE_URL,
-  googleClientId: process.env.GOOGLE_CLIENT_ID,
-  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  port: process.env.PORT || 8080,
+  workerUrl: process.env.CLOUD_TASKS_SERVICE_URL || '',
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+  port: process.env.PORT || '8080',
 };
 
-// Initialize Melaka's own Firestore (for reading project configs)
-let melakaApp;
-let melakaDb;
+// Types
+interface ProjectDoc {
+  id: string;
+  firebaseProjectId: string;
+  status: string;
+  config: {
+    collections: { path: string; fields: string[]; enabled?: boolean }[];
+    sourceLocale: string;
+    targetLocales: string[];
+  };
+}
 
-function initMelakaFirestore() {
-  if (melakaApp) return melakaDb;
+interface TokenDoc {
+  accessTokenEncrypted: string;
+  refreshTokenEncrypted?: string;
+  expiresAt: FirebaseFirestore.Timestamp;
+}
+
+// Initialize Melaka's own Firestore (for reading project configs)
+let melakaApp: App;
+let melakaDb: Firestore;
+
+function initMelakaFirestore(): Firestore {
+  if (melakaDb) return melakaDb;
   
   const serviceAccount = CONFIG.serviceAccountJson 
     ? JSON.parse(CONFIG.serviceAccountJson) 
@@ -52,39 +70,8 @@ function initMelakaFirestore() {
   return melakaDb;
 }
 
-// Decryption utility
-function decrypt(ciphertext, encryptionKey) {
-  const [saltB64, ivB64, tagB64, encryptedB64] = ciphertext.split(':');
-  const salt = Buffer.from(saltB64, 'base64');
-  const iv = Buffer.from(ivB64, 'base64');
-  const tag = Buffer.from(tagB64, 'base64');
-  const encrypted = Buffer.from(encryptedB64, 'base64');
-  const key = scryptSync(encryptionKey, salt, 32);
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  return decipher.update(encrypted) + decipher.final('utf8');
-}
-
-// Encryption utility (for storing refreshed tokens)
-import { createCipheriv, randomBytes } from 'crypto';
-
-function encrypt(plaintext, encryptionKey) {
-  const salt = randomBytes(32);
-  const key = scryptSync(encryptionKey, salt, 32);
-  const iv = randomBytes(16);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return [
-    salt.toString('base64'),
-    iv.toString('base64'),
-    tag.toString('base64'),
-    encrypted.toString('base64'),
-  ].join(':');
-}
-
 // Refresh OAuth token
-async function refreshAccessToken(refreshToken) {
+async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; expiresIn: number }> {
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -111,7 +98,17 @@ async function refreshAccessToken(refreshToken) {
 // Cloud Tasks client
 const tasksClient = new CloudTasksClient();
 
-async function queueTranslation(payload) {
+interface TranslationPayload {
+  projectId: string;
+  firebaseProjectId: string;
+  documentPath: string;
+  sourceLocale: string;
+  targetLocale: string;
+  fields: Record<string, string>;
+  accessToken: string;
+}
+
+async function queueTranslation(payload: TranslationPayload): Promise<void> {
   const parent = tasksClient.queuePath(
     CONFIG.cloudTasksProject,
     CONFIG.cloudTasksLocation,
@@ -120,7 +117,7 @@ async function queueTranslation(payload) {
 
   const task = {
     httpRequest: {
-      httpMethod: 'POST',
+      httpMethod: 'POST' as const,
       url: `${CONFIG.workerUrl}/translate`,
       headers: { 'Content-Type': 'application/json' },
       body: Buffer.from(JSON.stringify(payload)).toString('base64'),
@@ -132,14 +129,20 @@ async function queueTranslation(payload) {
 }
 
 // Firestore REST API helpers
-async function firestoreRestListen(projectId, accessToken, collectionPath, onDocument) {
-  // Use Firestore REST API to list documents
+interface FirestoreDocument {
+  name: string;
+  fields?: Record<string, { stringValue?: string; integerValue?: string; booleanValue?: boolean }>;
+}
+
+async function firestoreRestList(
+  projectId: string,
+  accessToken: string,
+  collectionPath: string
+): Promise<FirestoreDocument[]> {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionPath}`;
   
   const response = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-    },
+    headers: { 'Authorization': `Bearer ${accessToken}` },
   });
 
   if (!response.ok) {
@@ -148,30 +151,18 @@ async function firestoreRestListen(projectId, accessToken, collectionPath, onDoc
   }
 
   const data = await response.json();
-  
-  if (data.documents) {
-    for (const doc of data.documents) {
-      onDocument(doc);
-    }
-  }
-  
-  return data.documents?.length || 0;
+  return data.documents || [];
 }
 
 // Parse Firestore REST document to plain object
-function parseFirestoreDoc(doc) {
-  const fields = {};
-  const name = doc.name; // projects/{project}/databases/(default)/documents/{collection}/{docId}
-  const pathParts = name.split('/documents/')[1]; // collection/docId
+function parseFirestoreDoc(doc: FirestoreDocument): { path: string; fields: Record<string, string> } {
+  const fields: Record<string, string> = {};
+  const pathParts = doc.name.split('/documents/')[1]; // collection/docId
   
   if (doc.fields) {
     for (const [key, value] of Object.entries(doc.fields)) {
       if (value.stringValue !== undefined) {
         fields[key] = value.stringValue;
-      } else if (value.integerValue !== undefined) {
-        fields[key] = parseInt(value.integerValue);
-      } else if (value.booleanValue !== undefined) {
-        fields[key] = value.booleanValue;
       }
     }
   }
@@ -180,17 +171,15 @@ function parseFirestoreDoc(doc) {
 }
 
 // Track processed documents to avoid re-translating
-const processedDocs = new Map(); // docPath -> hash of fields
+const processedDocs = new Map<string, string>(); // docPath -> hash of fields
 
-function hashFields(fields) {
+function hashFields(fields: Record<string, string>): string {
   return JSON.stringify(fields);
 }
 
 // Poll a customer project for changes
-async function pollProject(project, accessToken) {
-  const projectId = project.id;
-  const firebaseProjectId = project.firebaseProjectId;
-  const config = project.config || {};
+async function pollProject(project: ProjectDoc, accessToken: string): Promise<number> {
+  const config = project.config || { collections: [], targetLocales: [], sourceLocale: 'en' };
   const collections = config.collections || [];
   const targetLocales = config.targetLocales || [];
   const sourceLocale = config.sourceLocale || 'en';
@@ -207,18 +196,20 @@ async function pollProject(project, accessToken) {
     const { path, fields } = collectionConfig;
     
     try {
-      await firestoreRestListen(firebaseProjectId, accessToken, path, (doc) => {
+      const documents = await firestoreRestList(project.firebaseProjectId, accessToken, path);
+      
+      for (const doc of documents) {
         const parsed = parseFirestoreDoc(doc);
-        const docKey = `${projectId}:${parsed.path}`;
+        const docKey = `${project.id}:${parsed.path}`;
         const currentHash = hashFields(parsed.fields);
         
         // Check if we already processed this exact version
         if (processedDocs.get(docKey) === currentHash) {
-          return;
+          continue;
         }
         
         // Extract translatable fields
-        const translatableData = {};
+        const translatableData: Record<string, string> = {};
         for (const field of fields) {
           if (typeof parsed.fields[field] === 'string' && parsed.fields[field].trim()) {
             translatableData[field] = parsed.fields[field];
@@ -227,29 +218,29 @@ async function pollProject(project, accessToken) {
         
         if (Object.keys(translatableData).length === 0) {
           processedDocs.set(docKey, currentHash);
-          return;
+          continue;
         }
         
         // Queue translation for each target locale
         for (const targetLocale of targetLocales) {
           queueTranslation({
-            projectId,
-            firebaseProjectId,
+            projectId: project.id,
+            firebaseProjectId: project.firebaseProjectId,
             documentPath: parsed.path,
             sourceLocale,
             targetLocale,
             fields: translatableData,
             accessToken,
           }).catch(err => {
-            console.error(`Failed to queue translation:`, err.message);
+            console.error(`Failed to queue translation:`, (err as Error).message);
           });
           queued++;
         }
         
         processedDocs.set(docKey, currentHash);
-      });
+      }
     } catch (err) {
-      console.error(`Error polling ${path} for ${projectId}:`, err.message);
+      console.error(`Error polling ${path} for ${project.id}:`, (err as Error).message);
     }
   }
   
@@ -257,7 +248,7 @@ async function pollProject(project, accessToken) {
 }
 
 // Main polling loop
-async function pollAllProjects() {
+async function pollAllProjects(): Promise<void> {
   console.log('Polling projects for changes...');
   
   try {
@@ -269,7 +260,7 @@ async function pollAllProjects() {
     let totalQueued = 0;
 
     for (const doc of snapshot.docs) {
-      const project = { id: doc.id, ...doc.data() };
+      const project = { id: doc.id, ...doc.data() } as ProjectDoc;
       
       // Get OAuth tokens
       const tokenDoc = await melakaDb.collection('melaka_oauth_tokens').doc(project.id).get();
@@ -278,12 +269,12 @@ async function pollAllProjects() {
         continue;
       }
 
-      const tokenData = tokenDoc.data();
+      const tokenData = tokenDoc.data() as TokenDoc;
       
       // Check if token is expired or will expire soon (5 min buffer)
       const expiresAt = tokenData.expiresAt?.toDate?.() || new Date(0);
       const bufferTime = 5 * 60 * 1000; // 5 minutes
-      let accessToken;
+      let accessToken: string;
       
       if (expiresAt.getTime() - bufferTime < Date.now()) {
         // Token expired or expiring soon - refresh it
@@ -308,7 +299,7 @@ async function pollAllProjects() {
           
           console.log(`Token refreshed for project ${project.id}, expires ${newExpiresAt.toISOString()}`);
         } catch (err) {
-          console.error(`Failed to refresh token for ${project.id}:`, err.message);
+          console.error(`Failed to refresh token for ${project.id}:`, (err as Error).message);
           continue;
         }
       } else {
@@ -326,7 +317,7 @@ async function pollAllProjects() {
 }
 
 // Health check endpoint
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.json({
     service: 'melaka-listener',
     status: 'healthy',
@@ -335,25 +326,24 @@ app.get('/', (req, res) => {
 });
 
 // Manual sync endpoint
-app.post('/sync', async (req, res) => {
+app.post('/sync', async (_req, res) => {
   try {
     await pollAllProjects();
     res.json({ success: true });
   } catch (err) {
     console.error('Sync failed:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
 // Webhook endpoint for real-time triggers (future)
-app.post('/webhook', async (req, res) => {
-  // Can be used with Firebase Extensions or Cloud Functions to push changes
+app.post('/webhook', (req, res) => {
   console.log('Webhook received:', req.body);
   res.json({ received: true });
 });
 
 // Start server
-const PORT = CONFIG.port;
+const PORT = parseInt(CONFIG.port, 10);
 app.listen(PORT, async () => {
   console.log(`Melaka Listener starting on port ${PORT}`);
   

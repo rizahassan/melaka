@@ -60,3 +60,12 @@ export {
   type Project as ProjectManagerProject,
   type ProjectConfig as ProjectManagerConfig,
 } from './project-manager.js';
+
+// ==================== Simple Translator ====================
+
+export {
+  translateFields,
+  type SimpleTranslationConfig,
+  type TranslateFieldsOptions,
+  type TranslateFieldsResult,
+} from './simple-translator.js';
