@@ -12,7 +12,7 @@ app.use(express.json());
 
 const CONFIG = {
   geminiApiKey: process.env.GEMINI_API_KEY || '',
-  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-04-17',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
   port: process.env.PORT || '8080',
 };
 
