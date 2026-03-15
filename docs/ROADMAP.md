@@ -179,7 +179,7 @@ Phase 2 is complete when:
 - [x] Next.js 14 dashboard
 - [x] Tailwind CSS styling
 - [x] Firebase client SDK integration
-- [ ] Firebase Auth integration (deferred)
+- [x] Firebase Auth integration
 - [ ] Hosted version option (deferred)
 
 ---
@@ -237,7 +237,7 @@ Phase 2 is complete when:
   - [x] Request Firestore read/write permissions
   - [x] Secure token storage (AES-256-GCM encrypted)
   - [ ] Per-collection permission scoping
-  - [ ] Easy disconnect/revoke UI
+  - [x] Easy disconnect/revoke UI
 
 - [x] **Database Layer**
   - [x] Firestore schema for projects, tokens, usage
@@ -272,18 +272,20 @@ Phase 2 is complete when:
   - [ ] Cache translations server-side
   - [ ] Similarity matching (fuzzy reuse)
 
-- [ ] **Usage Metering & Billing**
+- [x] **Usage Metering & Billing**
   - [x] Usage records schema
   - [x] Stripe integration (checkout, portal, webhook)
-  - [ ] Real-time usage tracking
+  - [x] Usage tracking API & dashboard
+  - [x] Subscription management (Stripe webhooks, portal, DB)
   - [ ] Overage alerts and notifications
 
 - [ ] **Dashboard Enhancements**
   - [x] Connect Firebase page (/connect)
   - [x] Pricing page with Free/Pro tiers
-  - [ ] Collection selector with preview
-  - [ ] Real-time translation status
-  - [ ] Usage & cost analytics
+  - [x] Settings page with subscription & usage
+  - [x] Analytics page with real project data
+  - [x] Collection selector with preview
+  - [x] Real-time translation status
 
 ### Architecture
 

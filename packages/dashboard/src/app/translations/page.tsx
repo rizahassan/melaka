@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
+import { RealTimeStatus } from '@/components/RealTimeStatus';
 import { useAuth } from '@/lib/auth';
 
 interface Translation {
@@ -165,86 +166,86 @@ export default function TranslationsPage() {
     }
   }, [user, authLoading, router]);
 
-  // Fetch translations from API
-  useEffect(() => {
+  // Fetch translations function (extracted for re-use)
+  const fetchTranslations = useCallback(async () => {
     if (!user) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch('/api/translations', {
+        headers: { 'x-user-id': user.uid },
+      });
 
-    async function fetchTranslations() {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await fetch('/api/translations', {
-          headers: { 'x-user-id': user!.uid },
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Failed to fetch translations');
-        }
-
+      if (!res.ok) {
         const data = await res.json();
-
-        // Transform API response (TranslationJobDoc) to Translation format
-        const mapped: Translation[] = (data.translations || []).map(
-          (job: {
-            id: string;
-            documentPath: string;
-            targetLocale: string;
-            fields: Record<string, string>;
-            status: string;
-            createdAt: { _seconds: number } | string;
-            projectName?: string;
-          }) => {
-            // Extract collection and documentId from documentPath (e.g. "articles/article-001")
-            const pathParts = job.documentPath.split('/');
-            const collection = pathParts.slice(0, -1).join('/') || pathParts[0];
-            const documentId = pathParts[pathParts.length - 1];
-
-            // Map fields from Record<string, string> to array format
-            const fieldEntries = Object.entries(job.fields || {}).map(
-              ([name, source]) => ({
-                name,
-                source: source as string,
-                translation: '', // Source fields stored; translations are written to Firestore docs directly
-              })
-            );
-
-            // Map status
-            const statusMap: Record<string, 'completed' | 'pending' | 'failed'> = {
-              completed: 'completed',
-              pending: 'pending',
-              processing: 'pending',
-              failed: 'failed',
-            };
-
-            return {
-              id: job.id,
-              collection,
-              documentId,
-              language: job.targetLocale,
-              fields: fieldEntries,
-              status: statusMap[job.status] || 'pending',
-              reviewed: false,
-              translatedAt:
-                typeof job.createdAt === 'object' && job.createdAt._seconds
-                  ? new Date(job.createdAt._seconds * 1000).toISOString()
-                  : undefined,
-              projectName: job.projectName,
-            };
-          }
-        );
-
-        setTranslations(mapped);
-      } catch (err) {
-        console.error('Failed to fetch translations:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch translations');
-      } finally {
-        setLoading(false);
+        throw new Error(data.error || 'Failed to fetch translations');
       }
-    }
 
-    fetchTranslations();
+      const data = await res.json();
+
+      // Transform API response (TranslationJobDoc) to Translation format
+      const mapped: Translation[] = (data.translations || []).map(
+        (job: {
+          id: string;
+          documentPath: string;
+          targetLocale: string;
+          fields: Record<string, string>;
+          status: string;
+          createdAt: { _seconds: number } | string;
+          projectName?: string;
+        }) => {
+          // Extract collection and documentId from documentPath (e.g. "articles/article-001")
+          const pathParts = job.documentPath.split('/');
+          const collection = pathParts.slice(0, -1).join('/') || pathParts[0];
+          const documentId = pathParts[pathParts.length - 1];
+
+          // Map fields from Record<string, string> to array format
+          const fieldEntries = Object.entries(job.fields || {}).map(
+            ([name, source]) => ({
+              name,
+              source: source as string,
+              translation: '', // Source fields stored; translations are written to Firestore docs directly
+            })
+          );
+
+          // Map status
+          const statusMap: Record<string, 'completed' | 'pending' | 'failed'> = {
+            completed: 'completed',
+            pending: 'pending',
+            processing: 'pending',
+            failed: 'failed',
+          };
+
+          return {
+            id: job.id,
+            collection,
+            documentId,
+            language: job.targetLocale,
+            fields: fieldEntries,
+            status: statusMap[job.status] || 'pending',
+            reviewed: false,
+            translatedAt:
+              typeof job.createdAt === 'object' && job.createdAt._seconds
+                ? new Date(job.createdAt._seconds * 1000).toISOString()
+                : undefined,
+            projectName: job.projectName,
+          };
+        }
+      );
+
+      setTranslations(mapped);
+    } catch (err) {
+      console.error('Failed to fetch translations:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch translations');
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  // Fetch translations on mount
+  useEffect(() => {
+    fetchTranslations();
+  }, [fetchTranslations]);
 
   const filteredTranslations = translations.filter((t) => {
     if (filter === 'unreviewed') return !t.reviewed && t.status === 'completed';
@@ -301,6 +302,18 @@ export default function TranslationsPage() {
             <FilterButton active={filter === 'failed'} onClick={() => setFilter('failed')}>Failed</FilterButton>
           </div>
         </div>
+
+        {/* Real-time Translation Status */}
+        {user && (
+          <RealTimeStatus
+            userId={user.uid}
+            pollInterval={5000}
+            onStatusChange={() => {
+              // Re-fetch translations when status changes (jobs complete, etc.)
+              fetchTranslations();
+            }}
+          />
+        )}
 
         {/* Loading State */}
         {loading && (

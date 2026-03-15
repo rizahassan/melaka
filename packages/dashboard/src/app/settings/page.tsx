@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { Header } from '@/components/Header';
+import { CollectionSelector } from '@/components/CollectionSelector';
 import { useAuth } from '@/lib/auth';
 import { PLANS, redirectToPortal } from '@/lib/stripe';
 
@@ -423,38 +424,37 @@ function SettingsContent() {
             </div>
           )}
 
-          {/* Collections */}
-          {activeProject && (
+          {/* Collections - Manual Configuration */}
+          {activeProject && user && (
             <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-6">
-              <h2 className="text-base font-medium text-white mb-4">
-                Collections
-              </h2>
-              {activeProject.config.collections.length > 0 ? (
-                <div className="space-y-3">
-                  {activeProject.config.collections.map((coll) => (
-                    <div
-                      key={coll.path}
-                      className="flex items-center justify-between p-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]"
-                    >
-                      <div>
-                        <p className="text-sm text-white font-medium">{coll.path}</p>
-                        <p className="text-xs text-[#5a6a8a] mt-0.5">
-                          {coll.fields.length} field{coll.fields.length !== 1 ? 's' : ''}: {coll.fields.join(', ')}
-                        </p>
-                      </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                        coll.enabled !== false
-                          ? 'bg-[rgba(34,197,94,0.1)] border-[rgba(34,197,94,0.2)] text-[#22c55e]'
-                          : 'bg-[rgba(255,255,255,0.05)] border-[rgba(255,255,255,0.1)] text-[#5a6a8a]'
-                      }`}>
-                        {coll.enabled !== false ? 'enabled' : 'disabled'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[#5a6a8a] text-sm">No collections configured</p>
-              )}
+              <CollectionSelector
+                currentCollections={activeProject.config.collections}
+                onSave={async (collections) => {
+                  const res = await fetch(`/api/projects/${activeProject.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'x-user-id': user.uid,
+                    },
+                    body: JSON.stringify({ collections }),
+                  });
+
+                  if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Failed to save collections');
+                  }
+
+                  // Update local state
+                  setProjects((prev) =>
+                    prev.map((p) =>
+                      p.id === activeProject.id
+                        ? { ...p, config: { ...p.config, collections } }
+                        : p
+                    )
+                  );
+                  setSuccessMessage('Collection configuration saved!');
+                }}
+              />
             </div>
           )}
 
@@ -465,7 +465,7 @@ function SettingsContent() {
             </h2>
             <div className="p-4 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]">
               <p className="text-sm text-[#8090b8]">
-                <span className="font-medium text-white">Note:</span> To update collections, languages, or AI provider settings, edit your{' '}
+                <span className="font-medium text-white">Note:</span> Collections can be configured above. To update languages or AI provider settings, edit your{' '}
                 <code className="px-1.5 py-0.5 rounded bg-[rgba(255,255,255,0.06)] text-[#d4a017] text-xs">melaka.config.ts</code>
                 {' '}file and redeploy.
               </p>

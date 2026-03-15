@@ -36,12 +36,12 @@ export class OAuthManager {
       access_type: 'offline',
       prompt: 'consent',
       scope: [
-        // Firestore access
+        // Firestore access (document CRUD + translation read/write)
         'https://www.googleapis.com/auth/datastore',
         // User identity
         'openid',
-        'email',
-        'profile',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
       ],
       state,
     });
