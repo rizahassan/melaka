@@ -36,8 +36,8 @@ export class OAuthManager {
       access_type: 'offline',
       prompt: 'consent',
       scope: [
-        // Firestore access (document CRUD + translation read/write)
-        'https://www.googleapis.com/auth/datastore',
+        // Full cloud platform access for Firestore
+        'https://www.googleapis.com/auth/cloud-platform',
         // User identity
         'openid',
         'https://www.googleapis.com/auth/userinfo.email',
