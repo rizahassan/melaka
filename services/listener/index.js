@@ -2,13 +2,14 @@
  * Melaka Cloud Listener Service
  * 
  * Watches connected customer Firestore collections and queues translations.
- * Runs on Cloud Run, polls melaka_projects for active projects.
+ * Uses Firestore REST API for customer projects (OAuth tokens).
  */
 
 import express from 'express';
-import { initializeApp, cert, getApps, deleteApp } from 'firebase-admin/app';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { CloudTasksClient } from '@google-cloud/tasks';
+import { createDecipheriv, scryptSync } from 'crypto';
 
 const app = express();
 app.use(express.json());
@@ -22,11 +23,10 @@ const CONFIG = {
   cloudTasksLocation: process.env.CLOUD_TASKS_LOCATION || 'us-central1',
   cloudTasksQueue: process.env.CLOUD_TASKS_QUEUE_NAME || 'melaka-translations',
   workerUrl: process.env.CLOUD_TASKS_SERVICE_URL,
-  geminiApiKey: process.env.GEMINI_API_KEY,
   port: process.env.PORT || 8080,
 };
 
-// Initialize Melaka's own Firestore
+// Initialize Melaka's own Firestore (for reading project configs)
 let melakaApp;
 let melakaDb;
 
@@ -37,8 +37,12 @@ function initMelakaFirestore() {
     ? JSON.parse(CONFIG.serviceAccountJson) 
     : undefined;
   
+  if (!serviceAccount) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON not configured');
+  }
+  
   melakaApp = initializeApp({
-    credential: serviceAccount ? cert(serviceAccount) : undefined,
+    credential: cert(serviceAccount),
     projectId: CONFIG.melakaProjectId,
   }, 'melaka-admin');
   
@@ -46,9 +50,7 @@ function initMelakaFirestore() {
   return melakaDb;
 }
 
-// Encryption utilities (same as in cloud package)
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
-
+// Decryption utility
 function decrypt(ciphertext, encryptionKey) {
   const [saltB64, ivB64, tagB64, encryptedB64] = ciphertext.split(':');
   const salt = Buffer.from(saltB64, 'base64');
@@ -84,156 +86,173 @@ async function queueTranslation(payload) {
   console.log(`Queued translation for ${payload.documentPath} -> ${payload.targetLocale}`);
 }
 
-// Active project listeners
-const activeListeners = new Map(); // projectId -> { unsubscribes: [], customerApp }
-
-async function startListeningToProject(project) {
-  const projectId = project.id;
+// Firestore REST API helpers
+async function firestoreRestListen(projectId, accessToken, collectionPath, onDocument) {
+  // Use Firestore REST API to list documents
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionPath}`;
   
-  if (activeListeners.has(projectId)) {
-    console.log(`Already listening to project ${projectId}`);
-    return;
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Firestore REST error: ${response.status} - ${error}`);
   }
 
-  console.log(`Starting listener for project ${projectId} (${project.firebaseProjectId})`);
-
-  // Get OAuth tokens
-  const tokenDoc = await melakaDb.collection('melaka_oauth_tokens').doc(projectId).get();
-  if (!tokenDoc.exists) {
-    console.error(`No tokens for project ${projectId}`);
-    return;
-  }
-
-  const tokenData = tokenDoc.data();
-  const accessToken = decrypt(tokenData.accessTokenEncrypted, CONFIG.encryptionKey);
-
-  // Initialize customer's Firestore
-  const customerAppName = `customer-${projectId}`;
-  let customerApp;
+  const data = await response.json();
   
-  try {
-    customerApp = initializeApp({
-      projectId: project.firebaseProjectId,
-      credential: {
-        getAccessToken: async () => ({
-          access_token: accessToken,
-          expires_in: 3600,
-        }),
-      },
-    }, customerAppName);
-  } catch (err) {
-    if (err.code === 'app/duplicate-app') {
-      customerApp = getApps().find(a => a.name === customerAppName);
-    } else {
-      throw err;
+  if (data.documents) {
+    for (const doc of data.documents) {
+      onDocument(doc);
     }
   }
+  
+  return data.documents?.length || 0;
+}
 
-  const customerDb = getFirestore(customerApp);
-  const unsubscribes = [];
+// Parse Firestore REST document to plain object
+function parseFirestoreDoc(doc) {
+  const fields = {};
+  const name = doc.name; // projects/{project}/databases/(default)/documents/{collection}/{docId}
+  const pathParts = name.split('/documents/')[1]; // collection/docId
+  
+  if (doc.fields) {
+    for (const [key, value] of Object.entries(doc.fields)) {
+      if (value.stringValue !== undefined) {
+        fields[key] = value.stringValue;
+      } else if (value.integerValue !== undefined) {
+        fields[key] = parseInt(value.integerValue);
+      } else if (value.booleanValue !== undefined) {
+        fields[key] = value.booleanValue;
+      }
+    }
+  }
+  
+  return { path: pathParts, fields };
+}
 
-  // Listen to each configured collection
-  for (const collectionConfig of project.config.collections || []) {
+// Track processed documents to avoid re-translating
+const processedDocs = new Map(); // docPath -> hash of fields
+
+function hashFields(fields) {
+  return JSON.stringify(fields);
+}
+
+// Poll a customer project for changes
+async function pollProject(project, accessToken) {
+  const projectId = project.id;
+  const firebaseProjectId = project.firebaseProjectId;
+  const config = project.config || {};
+  const collections = config.collections || [];
+  const targetLocales = config.targetLocales || [];
+  const sourceLocale = config.sourceLocale || 'en';
+  
+  if (collections.length === 0 || targetLocales.length === 0) {
+    return 0;
+  }
+
+  let queued = 0;
+
+  for (const collectionConfig of collections) {
     if (collectionConfig.enabled === false) continue;
-
+    
     const { path, fields } = collectionConfig;
-    console.log(`  Listening to ${path} for fields: ${fields.join(', ')}`);
-
-    const unsubscribe = customerDb.collection(path).onSnapshot(
-      (snapshot) => {
-        for (const change of snapshot.docChanges()) {
-          if (change.type === 'added' || change.type === 'modified') {
-            const doc = change.doc;
-            const data = doc.data();
-
-            // Skip i18n subcollection docs
-            if (doc.ref.path.includes('/i18n/')) continue;
-
-            // Extract translatable fields
-            const translatableData = {};
-            for (const field of fields) {
-              if (typeof data[field] === 'string' && data[field].trim()) {
-                translatableData[field] = data[field];
-              }
-            }
-
-            if (Object.keys(translatableData).length === 0) continue;
-
-            // Queue translation for each target locale
-            for (const targetLocale of project.config.targetLocales || []) {
-              queueTranslation({
-                projectId,
-                firebaseProjectId: project.firebaseProjectId,
-                documentPath: doc.ref.path,
-                sourceLocale: project.config.sourceLocale || 'en',
-                targetLocale,
-                fields: translatableData,
-                accessToken, // Include for worker to use
-              }).catch(err => {
-                console.error(`Failed to queue translation:`, err);
-              });
-            }
+    
+    try {
+      await firestoreRestListen(firebaseProjectId, accessToken, path, (doc) => {
+        const parsed = parseFirestoreDoc(doc);
+        const docKey = `${projectId}:${parsed.path}`;
+        const currentHash = hashFields(parsed.fields);
+        
+        // Check if we already processed this exact version
+        if (processedDocs.get(docKey) === currentHash) {
+          return;
+        }
+        
+        // Extract translatable fields
+        const translatableData = {};
+        for (const field of fields) {
+          if (typeof parsed.fields[field] === 'string' && parsed.fields[field].trim()) {
+            translatableData[field] = parsed.fields[field];
           }
         }
-      },
-      (error) => {
-        console.error(`Listener error for ${projectId}/${path}:`, error);
-      }
-    );
-
-    unsubscribes.push(unsubscribe);
-  }
-
-  activeListeners.set(projectId, { unsubscribes, customerApp });
-}
-
-async function stopListeningToProject(projectId) {
-  const listener = activeListeners.get(projectId);
-  if (!listener) return;
-
-  console.log(`Stopping listener for project ${projectId}`);
-  
-  for (const unsubscribe of listener.unsubscribes) {
-    unsubscribe();
-  }
-
-  if (listener.customerApp) {
-    await deleteApp(listener.customerApp);
-  }
-
-  activeListeners.delete(projectId);
-}
-
-// Poll for active projects and manage listeners
-async function syncProjectListeners() {
-  console.log('Syncing project listeners...');
-  
-  const snapshot = await melakaDb
-    .collection('melaka_projects')
-    .where('status', '==', 'active')
-    .get();
-
-  const activeProjectIds = new Set();
-
-  for (const doc of snapshot.docs) {
-    const project = { id: doc.id, ...doc.data() };
-    activeProjectIds.add(project.id);
-
-    if (!activeListeners.has(project.id)) {
-      await startListeningToProject(project).catch(err => {
-        console.error(`Failed to start listener for ${project.id}:`, err);
+        
+        if (Object.keys(translatableData).length === 0) {
+          processedDocs.set(docKey, currentHash);
+          return;
+        }
+        
+        // Queue translation for each target locale
+        for (const targetLocale of targetLocales) {
+          queueTranslation({
+            projectId,
+            firebaseProjectId,
+            documentPath: parsed.path,
+            sourceLocale,
+            targetLocale,
+            fields: translatableData,
+            accessToken,
+          }).catch(err => {
+            console.error(`Failed to queue translation:`, err.message);
+          });
+          queued++;
+        }
+        
+        processedDocs.set(docKey, currentHash);
       });
+    } catch (err) {
+      console.error(`Error polling ${path} for ${projectId}:`, err.message);
     }
   }
+  
+  return queued;
+}
 
-  // Stop listeners for projects no longer active
-  for (const projectId of activeListeners.keys()) {
-    if (!activeProjectIds.has(projectId)) {
-      await stopListeningToProject(projectId);
+// Main polling loop
+async function pollAllProjects() {
+  console.log('Polling projects for changes...');
+  
+  try {
+    const snapshot = await melakaDb
+      .collection('melaka_projects')
+      .where('status', '==', 'active')
+      .get();
+
+    let totalQueued = 0;
+
+    for (const doc of snapshot.docs) {
+      const project = { id: doc.id, ...doc.data() };
+      
+      // Get OAuth tokens
+      const tokenDoc = await melakaDb.collection('melaka_oauth_tokens').doc(project.id).get();
+      if (!tokenDoc.exists) {
+        console.log(`No tokens for project ${project.id}, skipping`);
+        continue;
+      }
+
+      const tokenData = tokenDoc.data();
+      
+      // Check if token is expired
+      const expiresAt = tokenData.expiresAt?.toDate?.() || new Date(0);
+      if (expiresAt < new Date()) {
+        console.log(`Token expired for project ${project.id}, skipping`);
+        // TODO: Refresh token
+        continue;
+      }
+      
+      const accessToken = decrypt(tokenData.accessTokenEncrypted, CONFIG.encryptionKey);
+      
+      const queued = await pollProject(project, accessToken);
+      totalQueued += queued;
     }
-  }
 
-  console.log(`Active listeners: ${activeListeners.size}`);
+    console.log(`Polling complete. Queued ${totalQueued} translations.`);
+  } catch (err) {
+    console.error('Polling error:', err);
+  }
 }
 
 // Health check endpoint
@@ -241,32 +260,45 @@ app.get('/', (req, res) => {
   res.json({
     service: 'melaka-listener',
     status: 'healthy',
-    activeListeners: activeListeners.size,
+    processedDocs: processedDocs.size,
   });
 });
 
 // Manual sync endpoint
 app.post('/sync', async (req, res) => {
   try {
-    await syncProjectListeners();
-    res.json({ success: true, activeListeners: activeListeners.size });
+    await pollAllProjects();
+    res.json({ success: true });
   } catch (err) {
     console.error('Sync failed:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// Webhook endpoint for real-time triggers (future)
+app.post('/webhook', async (req, res) => {
+  // Can be used with Firebase Extensions or Cloud Functions to push changes
+  console.log('Webhook received:', req.body);
+  res.json({ received: true });
+});
+
 // Start server
-app.listen(CONFIG.port, async () => {
-  console.log(`Melaka Listener starting on port ${CONFIG.port}`);
+const PORT = CONFIG.port;
+app.listen(PORT, async () => {
+  console.log(`Melaka Listener starting on port ${PORT}`);
   
-  initMelakaFirestore();
-  
-  // Initial sync
-  await syncProjectListeners();
-  
-  // Periodic sync every 5 minutes
-  setInterval(syncProjectListeners, 5 * 60 * 1000);
-  
-  console.log('Listener service ready');
+  try {
+    initMelakaFirestore();
+    console.log('Connected to Melaka Firestore');
+    
+    // Initial poll
+    await pollAllProjects();
+    
+    // Poll every 30 seconds
+    setInterval(pollAllProjects, 30 * 1000);
+    
+    console.log('Listener service ready (polling mode)');
+  } catch (err) {
+    console.error('Failed to initialize:', err);
+  }
 });
