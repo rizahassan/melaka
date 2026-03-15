@@ -43,14 +43,40 @@ interface UsageData {
   period: { start: string; end: string };
 }
 
+// Language options with display names
+const AVAILABLE_LANGUAGES: { code: string; name: string }[] = [
+  { code: 'en', name: 'English' },
+  { code: 'ms', name: 'Malay' },
+  { code: 'zh-CN', name: 'Chinese (Simplified)' },
+  { code: 'zh-TW', name: 'Chinese (Traditional)' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'ta', name: 'Tamil' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'th', name: 'Thai' },
+  { code: 'vi', name: 'Vietnamese' },
+  { code: 'id', name: 'Indonesian' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'it', name: 'Italian' },
+  { code: 'nl', name: 'Dutch' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'tr', name: 'Turkish' },
+  { code: 'pl', name: 'Polish' },
+  { code: 'uk', name: 'Ukrainian' },
+  { code: 'sv', name: 'Swedish' },
+  { code: 'da', name: 'Danish' },
+  { code: 'fi', name: 'Finnish' },
+  { code: 'no', name: 'Norwegian' },
+];
+
 // Language display name lookup
-const LANGUAGE_NAMES: Record<string, string> = {
-  'ms-MY': 'Malay', 'zh-CN': 'Chinese (Simplified)', 'zh-TW': 'Chinese (Traditional)',
-  'ta-IN': 'Tamil', 'en': 'English', 'ja': 'Japanese', 'ko': 'Korean',
-  'fr': 'French', 'de': 'German', 'es': 'Spanish', 'pt': 'Portuguese',
-  'it': 'Italian', 'ar': 'Arabic', 'hi': 'Hindi', 'th': 'Thai',
-  'vi': 'Vietnamese', 'id': 'Indonesian', 'nl': 'Dutch', 'ru': 'Russian',
-};
+const LANGUAGE_NAMES: Record<string, string> = Object.fromEntries(
+  AVAILABLE_LANGUAGES.map(({ code, name }) => [code, name])
+);
 
 // --- Background Effects ---
 function BackgroundEffects() {
@@ -113,6 +139,10 @@ function SettingsContent() {
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [savingLanguages, setSavingLanguages] = useState(false);
+  const [editingLanguages, setEditingLanguages] = useState(false);
+  const [selectedSourceLocale, setSelectedSourceLocale] = useState<string>('en');
+  const [selectedTargetLocales, setSelectedTargetLocales] = useState<string[]>([]);
 
   // Show success message from Stripe checkout redirect
   useEffect(() => {
@@ -211,6 +241,66 @@ function SettingsContent() {
 
   const activeProject = projects.find((p) => p.status === 'active') || projects[0];
   const currentPlan = PLANS[subscription?.planId === 'pro' ? 'pro' : 'free'];
+
+  // Initialize language editing state when project loads
+  useEffect(() => {
+    if (activeProject) {
+      setSelectedSourceLocale(activeProject.config.sourceLocale || 'en');
+      setSelectedTargetLocales(activeProject.config.targetLocales || []);
+    }
+  }, [activeProject]);
+
+  const handleSaveLanguages = async () => {
+    if (!user || !activeProject) return;
+    
+    setSavingLanguages(true);
+    try {
+      const res = await fetch(`/api/projects/${activeProject.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.uid,
+        },
+        body: JSON.stringify({
+          sourceLocale: selectedSourceLocale,
+          targetLocales: selectedTargetLocales,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to save languages');
+      }
+
+      // Update local state
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === activeProject.id
+            ? {
+                ...p,
+                config: {
+                  ...p.config,
+                  sourceLocale: selectedSourceLocale,
+                  targetLocales: selectedTargetLocales,
+                },
+              }
+            : p
+        )
+      );
+      setEditingLanguages(false);
+      setSuccessMessage('Language settings saved!');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save languages');
+    } finally {
+      setSavingLanguages(false);
+    }
+  };
+
+  const toggleTargetLocale = (code: string) => {
+    setSelectedTargetLocales((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  };
 
   return (
     <div className="relative max-w-3xl mx-auto px-6 pt-8 pb-16 space-y-6">
@@ -401,30 +491,110 @@ function SettingsContent() {
           {/* Languages */}
           {activeProject && (
             <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-6">
-              <h2 className="text-base font-medium text-white mb-2">
-                Languages
-              </h2>
-              <p className="text-[#8090b8] text-sm mb-4">
-                Source: <span className="text-white">{activeProject.config.sourceLocale}</span>
-                {' · '}Target languages configured for <span className="text-white">{activeProject.name}</span>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {activeProject.config.targetLocales.length > 0 ? (
-                  activeProject.config.targetLocales.map((locale) => (
-                    <LanguageBadge
-                      key={locale}
-                      code={locale}
-                      name={LANGUAGE_NAMES[locale] || locale}
-                    />
-                  ))
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-medium text-white">Languages</h2>
+                {!editingLanguages ? (
+                  <button
+                    onClick={() => setEditingLanguages(true)}
+                    className="text-sm text-[#1a3a8a] hover:text-[#2a4faa] transition-colors"
+                  >
+                    Edit
+                  </button>
                 ) : (
-                  <p className="text-[#5a6a8a] text-sm">No target languages configured</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingLanguages(false);
+                        setSelectedSourceLocale(activeProject.config.sourceLocale || 'en');
+                        setSelectedTargetLocales(activeProject.config.targetLocales || []);
+                      }}
+                      className="text-sm text-[#5a6a8a] hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveLanguages}
+                      disabled={savingLanguages}
+                      className="text-sm text-[#22c55e] hover:text-[#2ed573] transition-colors disabled:opacity-50"
+                    >
+                      {savingLanguages ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
                 )}
               </div>
+
+              {!editingLanguages ? (
+                <>
+                  <p className="text-[#8090b8] text-sm mb-4">
+                    Source: <span className="text-white">{LANGUAGE_NAMES[activeProject.config.sourceLocale] || activeProject.config.sourceLocale}</span>
+                    {' · '}Target languages for <span className="text-white">{activeProject.name}</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {activeProject.config.targetLocales.length > 0 ? (
+                      activeProject.config.targetLocales.map((locale) => (
+                        <LanguageBadge
+                          key={locale}
+                          code={locale}
+                          name={LANGUAGE_NAMES[locale] || locale}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-[#5a6a8a] text-sm">No target languages configured. Click Edit to add languages.</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-6">
+                  {/* Source Language */}
+                  <div>
+                    <label className="block text-sm text-[#8090b8] mb-2">Source Language</label>
+                    <select
+                      value={selectedSourceLocale}
+                      onChange={(e) => setSelectedSourceLocale(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] text-white text-sm focus:outline-none focus:border-[#1a3a8a] transition-colors"
+                    >
+                      {AVAILABLE_LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code} className="bg-[#0c0e1a]">
+                          {lang.name} ({lang.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Target Languages */}
+                  <div>
+                    <label className="block text-sm text-[#8090b8] mb-2">
+                      Target Languages <span className="text-[#5a6a8a]">({selectedTargetLocales.length} selected)</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-1">
+                      {AVAILABLE_LANGUAGES.filter((lang) => lang.code !== selectedSourceLocale).map((lang) => (
+                        <button
+                          key={lang.code}
+                          onClick={() => toggleTargetLocale(lang.code)}
+                          className={`px-3 py-2 rounded-lg text-sm text-left transition-all ${
+                            selectedTargetLocales.includes(lang.code)
+                              ? 'bg-[rgba(26,58,138,0.2)] border border-[#1a3a8a] text-white'
+                              : 'bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-[#8090b8] hover:border-[rgba(255,255,255,0.15)]'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            {selectedTargetLocales.includes(lang.code) && (
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 7l3 3 5-6" />
+                              </svg>
+                            )}
+                            {lang.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Collections - Manual Configuration */}
+          {/* Collections */}
           {activeProject && user && (
             <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-6">
               <CollectionSelector
@@ -457,20 +627,6 @@ function SettingsContent() {
               />
             </div>
           )}
-
-          {/* Configuration Note */}
-          <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-6">
-            <h2 className="text-base font-medium text-white mb-4">
-              Configuration
-            </h2>
-            <div className="p-4 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]">
-              <p className="text-sm text-[#8090b8]">
-                <span className="font-medium text-white">Note:</span> Collections can be configured above. To update languages or AI provider settings, edit your{' '}
-                <code className="px-1.5 py-0.5 rounded bg-[rgba(255,255,255,0.06)] text-[#d4a017] text-xs">melaka.config.ts</code>
-                {' '}file and redeploy.
-              </p>
-            </div>
-          </div>
         </>
       )}
     </div>
