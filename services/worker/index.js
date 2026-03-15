@@ -20,7 +20,7 @@ async function translateWithGemini(text, sourceLocale, targetLocale) {
   if (!CONFIG.geminiApiKey) throw new Error('GEMINI_API_KEY not configured');
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.geminiApiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${CONFIG.geminiApiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
