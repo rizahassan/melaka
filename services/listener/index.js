@@ -23,6 +23,8 @@ const CONFIG = {
   cloudTasksLocation: process.env.CLOUD_TASKS_LOCATION || 'us-central1',
   cloudTasksQueue: process.env.CLOUD_TASKS_QUEUE_NAME || 'melaka-translations',
   workerUrl: process.env.CLOUD_TASKS_SERVICE_URL,
+  googleClientId: process.env.GOOGLE_CLIENT_ID,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
   port: process.env.PORT || 8080,
 };
 
@@ -61,6 +63,49 @@ function decrypt(ciphertext, encryptionKey) {
   const decipher = createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(tag);
   return decipher.update(encrypted) + decipher.final('utf8');
+}
+
+// Encryption utility (for storing refreshed tokens)
+import { createCipheriv, randomBytes } from 'crypto';
+
+function encrypt(plaintext, encryptionKey) {
+  const salt = randomBytes(32);
+  const key = scryptSync(encryptionKey, salt, 32);
+  const iv = randomBytes(16);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [
+    salt.toString('base64'),
+    iv.toString('base64'),
+    tag.toString('base64'),
+    encrypted.toString('base64'),
+  ].join(':');
+}
+
+// Refresh OAuth token
+async function refreshAccessToken(refreshToken) {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: CONFIG.googleClientId,
+      client_secret: CONFIG.googleClientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Token refresh failed: ${error}`);
+  }
+
+  const data = await response.json();
+  return {
+    accessToken: data.access_token,
+    expiresIn: data.expires_in,
+  };
 }
 
 // Cloud Tasks client
@@ -235,15 +280,40 @@ async function pollAllProjects() {
 
       const tokenData = tokenDoc.data();
       
-      // Check if token is expired
+      // Check if token is expired or will expire soon (5 min buffer)
       const expiresAt = tokenData.expiresAt?.toDate?.() || new Date(0);
-      if (expiresAt < new Date()) {
-        console.log(`Token expired for project ${project.id}, skipping`);
-        // TODO: Refresh token
-        continue;
-      }
+      const bufferTime = 5 * 60 * 1000; // 5 minutes
+      let accessToken;
       
-      const accessToken = decrypt(tokenData.accessTokenEncrypted, CONFIG.encryptionKey);
+      if (expiresAt.getTime() - bufferTime < Date.now()) {
+        // Token expired or expiring soon - refresh it
+        console.log(`Refreshing token for project ${project.id}...`);
+        
+        if (!tokenData.refreshTokenEncrypted) {
+          console.log(`No refresh token for project ${project.id}, skipping`);
+          continue;
+        }
+        
+        try {
+          const refreshToken = decrypt(tokenData.refreshTokenEncrypted, CONFIG.encryptionKey);
+          const newTokens = await refreshAccessToken(refreshToken);
+          accessToken = newTokens.accessToken;
+          
+          // Update stored tokens
+          const newExpiresAt = new Date(Date.now() + newTokens.expiresIn * 1000);
+          await melakaDb.collection('melaka_oauth_tokens').doc(project.id).update({
+            accessTokenEncrypted: encrypt(newTokens.accessToken, CONFIG.encryptionKey),
+            expiresAt: Timestamp.fromDate(newExpiresAt),
+          });
+          
+          console.log(`Token refreshed for project ${project.id}, expires ${newExpiresAt.toISOString()}`);
+        } catch (err) {
+          console.error(`Failed to refresh token for ${project.id}:`, err.message);
+          continue;
+        }
+      } else {
+        accessToken = decrypt(tokenData.accessTokenEncrypted, CONFIG.encryptionKey);
+      }
       
       const queued = await pollProject(project, accessToken);
       totalQueued += queued;
