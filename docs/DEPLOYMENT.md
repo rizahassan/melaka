@@ -151,13 +151,6 @@ pnpm build
 firebase deploy --only hosting
 ```
 
-#### Vercel
-
-```bash
-cd packages/dashboard
-vercel --prod
-```
-
 ## Environment Variables
 
 ### Dashboard (.env.local)
