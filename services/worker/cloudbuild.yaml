@@ -3,7 +3,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/melaka-worker:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/melaka-worker:${_TAG}'
       - '-t'
       - 'gcr.io/$PROJECT_ID/melaka-worker:latest'
       - '-f'
@@ -12,7 +12,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/melaka-worker:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/melaka-worker:${_TAG}'
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
@@ -24,11 +24,13 @@ steps:
       - 'deploy'
       - 'melaka-worker'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/melaka-worker:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/melaka-worker:${_TAG}'
       - '--region'
       - 'us-central1'
       - '--platform'
       - 'managed'
+substitutions:
+  _TAG: latest
 images:
-  - 'gcr.io/$PROJECT_ID/melaka-worker:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/melaka-worker:${_TAG}'
   - 'gcr.io/$PROJECT_ID/melaka-worker:latest'
