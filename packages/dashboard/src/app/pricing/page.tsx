@@ -139,7 +139,6 @@ export default function PricingPage() {
               <tbody className="text-sm">
                 <CompareRow label="Monthly translations" values={['Unlimited*', '2,000', '10,000', '50,000']} />
                 <CompareRow label="Projects" values={['1', '3', '10', 'Unlimited']} />
-                <CompareRow label="Team members" values={['1', '1', '5', 'Unlimited']} />
                 <CompareRow label="Hosted dashboard" values={[false, true, true, true]} />
                 <CompareRow label="No AI keys needed" values={[false, true, true, true]} />
                 <CompareRow label="Analytics" values={[false, false, true, true]} />
@@ -180,7 +179,7 @@ export default function PricingPage() {
           />
           <FAQ
             question="Can I use Melaka completely free?"
-            answer="Yes! The SDK and CLI are fully open source. Self-host your own Cloud Functions with your own AI API keys (Gemini, OpenAI, or Claude). The paid plans are for teams who want fully managed translations."
+            answer="Yes! The SDK and CLI are fully open source. Self-host your own Cloud Functions with your own AI API keys (Gemini, OpenAI, or Claude). The paid plans are for those who want fully managed translations."
           />
           <FAQ
             question="How does the free trial work?"

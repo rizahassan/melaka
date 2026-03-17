@@ -23,7 +23,6 @@ export const PLANS = {
     limits: {
       translations: -1, // unlimited (self-hosted)
       projects: 1,
-      teamMembers: 1,
     },
   },
   starter: {
@@ -37,14 +36,12 @@ export const PLANS = {
       'Fully managed — no code needed',
       'No AI API keys needed',
       'Hosted dashboard',
-      '1 team member',
       '3 projects',
       'Email support',
     ],
     limits: {
       translations: 2000,
       projects: 3,
-      teamMembers: 1,
     },
     overage: 0.008, // $0.008 per translation over limit
   },
@@ -53,12 +50,11 @@ export const PLANS = {
     name: 'Pro',
     price: 49,
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
-    description: 'For growing teams',
+    description: 'For growing apps',
     popular: true,
     features: [
       '10,000 translations/month',
       'Everything in Starter',
-      'Up to 5 team members',
       '10 projects',
       'Priority support',
       'Translation analytics',
@@ -66,7 +62,6 @@ export const PLANS = {
     limits: {
       translations: 10000,
       projects: 10,
-      teamMembers: 5,
     },
     overage: 0.005, // $0.005 per translation over limit
   },
@@ -79,7 +74,6 @@ export const PLANS = {
     features: [
       '50,000 translations/month',
       'Everything in Pro',
-      'Unlimited team members',
       'Unlimited projects',
       'Slack support',
       'Custom AI model selection',
@@ -87,7 +81,6 @@ export const PLANS = {
     limits: {
       translations: 50000,
       projects: -1, // unlimited
-      teamMembers: -1, // unlimited
     },
     overage: 0.003, // $0.003 per translation over limit
   },
