@@ -215,9 +215,6 @@ importers:
       '@google-cloud/tasks':
         specifier: ^5.1.0
         version: 5.5.2
-      '@melaka/cloud':
-        specifier: workspace:*
-        version: link:../../packages/cloud
       express:
         specifier: ^4.18.2
         version: 4.22.1
@@ -240,12 +237,12 @@ importers:
 
   services/worker:
     dependencies:
-      '@melaka/cloud':
-        specifier: workspace:*
-        version: link:../../packages/cloud
       express:
         specifier: ^4.18.2
         version: 4.22.1
+      firebase-admin:
+        specifier: ^12.0.0
+        version: 12.7.0
     devDependencies:
       '@types/express':
         specifier: ^4.17.21
