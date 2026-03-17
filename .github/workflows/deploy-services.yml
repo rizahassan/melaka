@@ -83,8 +83,7 @@ jobs:
       - name: Deploy Listener
         run: |
           gcloud builds submit \
-            --config=services/listener/cloudbuild.yaml \
-            --substitutions=_REGION=${{ env.REGION }}
+            --config=services/listener/cloudbuild.yaml
 
       - name: Get Service URL
         run: |
@@ -113,8 +112,7 @@ jobs:
       - name: Deploy Worker
         run: |
           gcloud builds submit \
-            --config=services/worker/cloudbuild.yaml \
-            --substitutions=_REGION=${{ env.REGION }}
+            --config=services/worker/cloudbuild.yaml
 
       - name: Get Service URL
         run: |
