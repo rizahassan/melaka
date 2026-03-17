@@ -83,6 +83,24 @@ export const PLANS = {
     },
     overage: 0.003, // $0.003 per translation over limit
   },
+  enterprise: {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: -1, // Custom pricing
+    priceId: null,
+    description: 'Custom solutions',
+    features: [
+      'Custom translation limits',
+      'Everything in Scale',
+      'SSO & audit logs',
+      'Dedicated account manager',
+    ],
+    limits: {
+      translations: -1, // unlimited/custom
+      projects: -1, // unlimited
+    },
+    overage: 0, // Custom
+  },
 } as const;
 
 export type PlanId = keyof typeof PLANS;
