@@ -6,6 +6,8 @@
  */
 
 import express from 'express';
+import { initializeApp, cert, type App } from 'firebase-admin/app';
+import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 
 const app = express();
 app.use(express.json());
@@ -13,8 +15,70 @@ app.use(express.json());
 const CONFIG = {
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  melakaProjectId: process.env.FIREBASE_PROJECT_ID || 'melaka-cloud',
+  serviceAccountJson: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
   port: process.env.PORT || '8080',
 };
+
+// Initialize Melaka Firestore for job status updates
+let melakaApp: App;
+let melakaDb: Firestore;
+
+function initMelakaFirestore(): Firestore {
+  if (melakaDb) return melakaDb;
+  
+  const serviceAccount = CONFIG.serviceAccountJson 
+    ? JSON.parse(CONFIG.serviceAccountJson) 
+    : undefined;
+  
+  if (!serviceAccount) {
+    console.warn('FIREBASE_SERVICE_ACCOUNT_JSON not configured - job status updates disabled');
+    return null as unknown as Firestore;
+  }
+  
+  melakaApp = initializeApp({
+    credential: cert(serviceAccount),
+    projectId: CONFIG.melakaProjectId,
+  }, 'melaka-worker');
+  
+  melakaDb = getFirestore(melakaApp);
+  return melakaDb;
+}
+
+// Update job status in Melaka Firestore
+async function updateJobStatus(
+  jobId: string,
+  status: 'processing' | 'completed' | 'failed',
+  extra?: { error?: string; translatedFields?: Record<string, string>; durationMs?: number }
+): Promise<void> {
+  if (!melakaDb || !jobId) return;
+  
+  try {
+    const updateData: Record<string, unknown> = {
+      status,
+      updatedAt: Timestamp.now(),
+    };
+    
+    if (status === 'completed') {
+      updateData.completedAt = Timestamp.now();
+      if (extra?.translatedFields) {
+        updateData.translatedFields = extra.translatedFields;
+      }
+      if (extra?.durationMs) {
+        updateData.durationMs = extra.durationMs;
+      }
+    }
+    
+    if (status === 'failed' && extra?.error) {
+      updateData.error = extra.error;
+    }
+    
+    await melakaDb.collection('melaka_jobs').doc(jobId).update(updateData);
+    console.log(`Updated job ${jobId} status to ${status}`);
+  } catch (err) {
+    console.error(`Failed to update job ${jobId} status:`, err);
+  }
+}
 
 // Translate fields using Gemini
 async function translateFields(
@@ -119,21 +183,29 @@ app.get('/', (_req, res) => {
 app.post('/translate', async (req, res) => {
   const startTime = Date.now();
   
+  const {
+    firebaseProjectId,
+    documentPath,
+    sourceLocale,
+    targetLocale,
+    fields,
+    accessToken,
+    jobId,
+  } = req.body;
+
+  console.log(`Processing translation: ${documentPath} -> ${targetLocale} (job: ${jobId || 'none'})`);
+
+  // Mark job as processing
+  if (jobId) {
+    await updateJobStatus(jobId, 'processing');
+  }
+
   try {
-    const {
-      firebaseProjectId,
-      documentPath,
-      sourceLocale,
-      targetLocale,
-      fields,
-      accessToken,
-    } = req.body;
-
-    console.log(`Processing translation: ${documentPath} -> ${targetLocale}`);
-    console.log(`Token prefix: ${accessToken?.substring(0, 20)}...`);
-
     if (!firebaseProjectId || !documentPath || !fields || !accessToken) {
       console.error('Missing required fields');
+      if (jobId) {
+        await updateJobStatus(jobId, 'failed', { error: 'Missing required fields' });
+      }
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -152,6 +224,14 @@ app.post('/translate', async (req, res) => {
     const duration = Date.now() - startTime;
     console.log(`Completed translation in ${duration}ms: ${documentPath}/i18n/${targetLocale}`);
 
+    // Mark job as completed
+    if (jobId) {
+      await updateJobStatus(jobId, 'completed', {
+        translatedFields: translations,
+        durationMs: duration,
+      });
+    }
+
     res.json({
       success: true,
       documentPath,
@@ -160,13 +240,29 @@ app.post('/translate', async (req, res) => {
       durationMs: duration,
     });
   } catch (err) {
+    const errorMsg = (err as Error).message;
     console.error('Translation error:', err);
-    res.status(500).json({ error: (err as Error).message });
+    
+    // Mark job as failed
+    if (jobId) {
+      await updateJobStatus(jobId, 'failed', { error: errorMsg });
+    }
+    
+    res.status(500).json({ error: errorMsg });
   }
 });
 
 // Start server
 const PORT = parseInt(CONFIG.port, 10);
 app.listen(PORT, () => {
-  console.log(`Melaka Worker running on port ${PORT}`);
+  console.log(`Melaka Worker starting on port ${PORT}`);
+  
+  try {
+    initMelakaFirestore();
+    console.log('Connected to Melaka Firestore for job updates');
+  } catch (err) {
+    console.warn('Failed to init Melaka Firestore:', err);
+  }
+  
+  console.log('Worker service ready');
 });

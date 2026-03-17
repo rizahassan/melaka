@@ -141,9 +141,27 @@ interface TranslationPayload {
   targetLocale: string;
   fields: Record<string, string>;
   accessToken: string;
+  jobId?: string;
 }
 
-async function queueTranslation(payload: TranslationPayload): Promise<void> {
+async function queueTranslation(payload: TranslationPayload): Promise<string> {
+  // Create job record in Melaka Firestore
+  const jobRef = melakaDb.collection('melaka_jobs').doc();
+  const jobId = jobRef.id;
+  
+  await jobRef.set({
+    projectId: payload.projectId,
+    firebaseProjectId: payload.firebaseProjectId,
+    documentPath: payload.documentPath,
+    sourceLocale: payload.sourceLocale,
+    targetLocale: payload.targetLocale,
+    fields: payload.fields,
+    status: 'pending',
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+
+  // Queue the task with job ID
   const parent = tasksClient.queuePath(
     CONFIG.cloudTasksProject,
     CONFIG.cloudTasksLocation,
@@ -155,12 +173,14 @@ async function queueTranslation(payload: TranslationPayload): Promise<void> {
       httpMethod: 'POST' as const,
       url: `${CONFIG.workerUrl}/translate`,
       headers: { 'Content-Type': 'application/json' },
-      body: Buffer.from(JSON.stringify(payload)).toString('base64'),
+      body: Buffer.from(JSON.stringify({ ...payload, jobId })).toString('base64'),
     },
   };
 
   await tasksClient.createTask({ parent, task });
-  console.log(`Queued translation for ${payload.documentPath} -> ${payload.targetLocale}`);
+  console.log(`Queued translation for ${payload.documentPath} -> ${payload.targetLocale} (job: ${jobId})`);
+  
+  return jobId;
 }
 
 // Firestore REST API helpers
