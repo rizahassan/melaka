@@ -75,8 +75,7 @@ export const PLANS = {
       '50,000 translations/month',
       'Everything in Pro',
       'Unlimited projects',
-      'Slack support',
-      'Custom AI model selection',
+      'Dedicated support',
     ],
     limits: {
       translations: 50000,

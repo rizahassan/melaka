@@ -175,7 +175,7 @@ export default function PricingPage() {
           />
           <FAQ
             question="What happens if I exceed my limit?"
-            answer="You'll be charged the overage rate for additional translations. For example, on the Pro plan, each translation over 10,000 costs $0.005. You can set up alerts in the dashboard to monitor usage."
+            answer="You'll be charged the overage rate for additional translations. For example, on the Pro plan, each translation over 10,000 costs $0.005."
           />
           <FAQ
             question="Can I use Melaka completely free?"
