@@ -66,6 +66,7 @@ function encrypt(plaintext: string, encryptionKey: string): string {
 // Types
 interface ProjectDoc {
   id: string;
+  userId: string;
   firebaseProjectId: string;
   status: string;
   config: {
