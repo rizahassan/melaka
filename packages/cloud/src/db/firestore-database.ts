@@ -87,10 +87,15 @@ export interface SubscriptionDoc {
   userId: string;
   stripeCustomerId: string;
   stripeSubscriptionId: string;
-  planId: 'free' | 'pro' | 'enterprise';
+  planId: 'free' | 'starter' | 'pro' | 'scale' | 'enterprise';
   status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete';
   currentPeriodEnd: Timestamp;
   cancelAtPeriodEnd: boolean;
+  // Trial tracking
+  trialStart?: Timestamp;
+  trialEnd?: Timestamp;
+  trialTranslationsUsed?: number;
+  trialTranslationsLimit?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -445,10 +450,13 @@ export class MelakaFirestoreDatabase {
     userId: string;
     stripeCustomerId: string;
     stripeSubscriptionId: string;
-    planId: 'free' | 'pro' | 'enterprise';
+    planId: 'free' | 'starter' | 'pro' | 'scale' | 'enterprise';
     status: SubscriptionDoc['status'];
     currentPeriodEnd: Date;
     cancelAtPeriodEnd: boolean;
+    trialStart?: Date;
+    trialEnd?: Date;
+    trialTranslationsLimit?: number;
   }): Promise<void> {
     const now = Timestamp.now();
     // Use userId as document ID for easy lookup
@@ -456,7 +464,7 @@ export class MelakaFirestoreDatabase {
     const existing = await docRef.get();
 
     if (existing.exists) {
-      await docRef.update({
+      const updateData: Record<string, unknown> = {
         stripeCustomerId: data.stripeCustomerId,
         stripeSubscriptionId: data.stripeSubscriptionId,
         planId: data.planId,
@@ -464,7 +472,11 @@ export class MelakaFirestoreDatabase {
         currentPeriodEnd: Timestamp.fromDate(data.currentPeriodEnd),
         cancelAtPeriodEnd: data.cancelAtPeriodEnd,
         updatedAt: now,
-      });
+      };
+      if (data.trialStart) updateData.trialStart = Timestamp.fromDate(data.trialStart);
+      if (data.trialEnd) updateData.trialEnd = Timestamp.fromDate(data.trialEnd);
+      if (data.trialTranslationsLimit) updateData.trialTranslationsLimit = data.trialTranslationsLimit;
+      await docRef.update(updateData);
     } else {
       const subData: SubscriptionDoc = {
         userId: data.userId,
@@ -474,6 +486,10 @@ export class MelakaFirestoreDatabase {
         status: data.status,
         currentPeriodEnd: Timestamp.fromDate(data.currentPeriodEnd),
         cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+        trialStart: data.trialStart ? Timestamp.fromDate(data.trialStart) : undefined,
+        trialEnd: data.trialEnd ? Timestamp.fromDate(data.trialEnd) : undefined,
+        trialTranslationsUsed: 0,
+        trialTranslationsLimit: data.trialTranslationsLimit,
         createdAt: now,
         updatedAt: now,
       };

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getDatabase } from '@/lib/firebase-admin';
 
+// Trial configuration
+const TRIAL_DAYS = 14;
+
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) {
@@ -29,15 +32,20 @@ export async function POST(request: NextRequest) {
     // Check if user already has a subscription with a Stripe customer
     const db = getDatabase();
     let customerId: string | undefined;
+    let hasHadTrial = false;
 
     if (db) {
       const existingSub = await db.getSubscription(userId);
       if (existingSub?.stripeCustomerId) {
         customerId = existingSub.stripeCustomerId;
       }
+      // Don't give trial if they've already had one
+      if (existingSub?.trialStart) {
+        hasHadTrial = true;
+      }
     }
 
-    // If no existing customer, let Stripe create one during checkout
+    // Build session params
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -51,19 +59,35 @@ export async function POST(request: NextRequest) {
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       client_reference_id: userId,
       metadata: { userId },
+      // Allow promotion codes
+      allow_promotion_codes: true,
     };
+
+    // Add trial period if user hasn't had one before
+    if (!hasHadTrial) {
+      sessionParams.subscription_data = {
+        trial_period_days: TRIAL_DAYS,
+        metadata: { userId },
+      };
+      // Don't require payment method for trial
+      sessionParams.payment_method_collection = 'if_required';
+    }
 
     if (customerId) {
       sessionParams.customer = customerId;
+    } else {
+      // Collect email if new customer
+      sessionParams.customer_creation = 'always';
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
     return NextResponse.json({ sessionId: session.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Checkout error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to create checkout session';
     return NextResponse.json(
-      { error: error.message || 'Failed to create checkout session' },
+      { error: message },
       { status: 500 }
     );
   }

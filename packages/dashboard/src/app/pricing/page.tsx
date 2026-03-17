@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { PLANS, redirectToCheckout } from '@/lib/stripe';
+import { PLANS, TRIAL_CONFIG, redirectToCheckout } from '@/lib/stripe';
 import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/lib/auth';
@@ -26,7 +26,6 @@ export default function PricingPage() {
     if (!priceId) return;
 
     if (!user) {
-      // Redirect to login if not authenticated
       window.location.href = '/login?redirect=/pricing';
       return;
     }
@@ -55,20 +54,29 @@ export default function PricingPage() {
             Simple, transparent pricing
           </h1>
           <p className="text-lg text-[#8090b8] max-w-2xl mx-auto">
-            Self-host for free, or let us handle everything.
+            Self-host for free, or let us handle everything with a {TRIAL_CONFIG.durationDays}-day free trial.
           </p>
         </div>
 
         {/* Pricing Cards */}
-        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Free */}
           <PricingCard
             plan={PLANS.free}
             onSubscribe={() => {}}
-            buttonText="Get Started"
-            buttonHref="/docs"
+            buttonText="View Docs"
+            buttonHref="https://github.com/rizahassan/melaka#self-hosting"
             buttonVariant="secondary"
             loading={false}
+          />
+
+          {/* Starter */}
+          <PricingCard
+            plan={PLANS.starter}
+            onSubscribe={() => handleSubscribe('starter', PLANS.starter.priceId || null)}
+            buttonText="Start Free Trial"
+            buttonVariant="secondary"
+            loading={loading === 'starter'}
           />
 
           {/* Pro */}
@@ -80,50 +88,111 @@ export default function PricingPage() {
             featured
             loading={loading === 'pro'}
           />
+
+          {/* Scale */}
+          <PricingCard
+            plan={PLANS.scale}
+            onSubscribe={() => handleSubscribe('scale', PLANS.scale.priceId || null)}
+            buttonText="Start Free Trial"
+            buttonVariant="secondary"
+            loading={loading === 'scale'}
+          />
+        </div>
+
+        {/* Trial Info */}
+        <div className="text-center">
+          <p className="text-[#8090b8] text-sm">
+            All paid plans include a <span className="text-white font-medium">{TRIAL_CONFIG.durationDays}-day free trial</span> with up to <span className="text-white font-medium">{TRIAL_CONFIG.translationLimit} translations</span>. No credit card required to start.
+          </p>
         </div>
 
         {/* Enterprise CTA */}
-        <div className="text-center">
-          <p className="text-[#8090b8]">
-            Need SSO, audit logging, or translation memory?{' '}
-            <a href="mailto:hello@melaka.dev" className="text-[#2a4faa] hover:text-[#3058b8] font-medium transition-colors">
-              Contact us for Enterprise pricing
-            </a>
+        <div className="max-w-2xl mx-auto rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-8 text-center">
+          <h3 className="text-xl font-medium text-white mb-2">Enterprise</h3>
+          <p className="text-[#8090b8] mb-6">
+            Need SSO, audit logging, translation memory, or custom SLAs?
           </p>
+          <a 
+            href="mailto:hello@melaka.dev" 
+            className="inline-block px-6 py-3 rounded-xl font-medium text-sm border border-[rgba(255,255,255,0.12)] text-white hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(255,255,255,0.04)] transition-all"
+          >
+            Contact Sales
+          </a>
         </div>
+
+        {/* Comparison Table */}
+        <section>
+          <h2 className="text-2xl font-medium text-white text-center mb-8">
+            Compare Plans
+          </h2>
+          <div className="max-w-4xl mx-auto rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                  <th className="text-left p-4 text-sm font-medium text-[#8090b8]">Feature</th>
+                  <th className="p-4 text-sm font-medium text-white">Free</th>
+                  <th className="p-4 text-sm font-medium text-white">Starter</th>
+                  <th className="p-4 text-sm font-medium text-white bg-[rgba(26,58,138,0.1)]">Pro</th>
+                  <th className="p-4 text-sm font-medium text-white">Scale</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                <CompareRow label="Monthly translations" values={['Unlimited*', '2,000', '10,000', '50,000']} />
+                <CompareRow label="Projects" values={['1', '3', '10', 'Unlimited']} />
+                <CompareRow label="Team members" values={['1', '1', '5', 'Unlimited']} />
+                <CompareRow label="Hosted dashboard" values={[false, true, true, true]} />
+                <CompareRow label="No AI keys needed" values={[false, true, true, true]} />
+                <CompareRow label="Analytics" values={[false, false, true, true]} />
+                <CompareRow label="Priority support" values={[false, false, true, true]} />
+                <CompareRow label="Overage rate" values={['—', '$0.008', '$0.005', '$0.003']} />
+              </tbody>
+            </table>
+            <div className="p-4 border-t border-[rgba(255,255,255,0.06)]">
+              <p className="text-xs text-[#5a6a8a]">* Self-hosted with your own AI API keys</p>
+            </div>
+          </div>
+        </section>
 
         {/* How It Works */}
         <section>
           <h2 className="text-2xl font-medium text-white text-center mb-10">
-            How Melaka Pro Works
+            How Melaka Cloud Works
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Step number={1} title="Connect Firebase" description="Sign in with Google and grant Firestore access" />
-            <Step number={2} title="Select Collections" description="Choose which collections to translate" />
-            <Step number={3} title="Done!" description="Translations happen automatically" />
+            <Step number={1} title="Connect Firebase" description="Sign in with Google and grant Firestore access to your project" />
+            <Step number={2} title="Configure Collections" description="Select which collections and fields to translate" />
+            <Step number={3} title="Automatic Translations" description="New documents are translated instantly to all target languages" />
           </div>
         </section>
 
         {/* FAQ */}
-        <section className="max-w-3xl mx-auto space-y-6">
+        <section className="max-w-3xl mx-auto space-y-4">
           <h2 className="text-2xl font-medium text-white text-center mb-8">
             Frequently Asked Questions
           </h2>
           <FAQ
-            question="Can I use Melaka for free?"
-            answer="Yes! The CLI and SDK are completely free and open source. Self-host your own Cloud Functions with your own AI keys. Pro is for teams who want fully managed translations without any deployment."
+            question="What counts as a translation?"
+            answer="One translation = one document translated to one language. If you translate an article to 3 languages, that's 3 translations. Field count doesn't matter — a doc with 10 fields counts the same as one with 2 fields."
           />
           <FAQ
-            question="What's the difference between Free and Pro?"
-            answer="Free: You deploy Cloud Functions to your Firebase project and manage your own AI API keys. Pro: We handle everything — just connect your Firebase and we translate automatically. No code, no AI keys needed."
+            question="What happens if I exceed my limit?"
+            answer="You'll be charged the overage rate for additional translations. For example, on the Pro plan, each translation over 10,000 costs $0.005. You can set up alerts in the dashboard to monitor usage."
+          />
+          <FAQ
+            question="Can I use Melaka completely free?"
+            answer="Yes! The SDK and CLI are fully open source. Self-host your own Cloud Functions with your own AI API keys (Gemini, OpenAI, or Claude). The paid plans are for teams who want fully managed translations."
+          />
+          <FAQ
+            question="How does the free trial work?"
+            answer={`You get ${TRIAL_CONFIG.durationDays} days or ${TRIAL_CONFIG.translationLimit} translations, whichever comes first. No credit card required. After the trial, you can subscribe or downgrade to the free self-hosted tier.`}
           />
           <FAQ
             question="How does Melaka access my Firestore?"
-            answer="You authenticate with Google OAuth and grant read/write access to specific collections. You can revoke access anytime from your Google account settings."
+            answer="You authenticate with Google OAuth and grant read/write access to specific collections. Melaka only accesses the collections you configure. You can revoke access anytime from your Google account settings."
           />
           <FAQ
-            question="Can I cancel anytime?"
-            answer="Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period."
+            question="Can I switch plans anytime?"
+            answer="Yes! Upgrade instantly, or downgrade at the end of your billing period. Your data stays intact either way."
           />
         </section>
       </div>
@@ -148,14 +217,14 @@ function PricingCard({
   featured?: boolean;
   loading: boolean;
 }) {
-  const primaryClassName = `mt-8 w-full py-3 rounded-xl font-medium text-sm text-center block bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] text-white shadow-[0_4px_6px_rgba(26,58,138,0.25)] hover:shadow-[0_6px_12px_rgba(26,58,138,0.35)] transition-shadow ${loading ? 'opacity-50 cursor-not-allowed' : ''}`;
-  const secondaryClassName = `mt-8 w-full py-3 rounded-xl font-medium text-sm text-center block border border-[rgba(255,255,255,0.12)] text-white hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(255,255,255,0.04)] transition-all ${loading ? 'opacity-50 cursor-not-allowed' : ''}`;
+  const primaryClassName = `mt-6 w-full py-3 rounded-xl font-medium text-sm text-center block bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] text-white shadow-[0_4px_6px_rgba(26,58,138,0.25)] hover:shadow-[0_6px_12px_rgba(26,58,138,0.35)] transition-shadow ${loading ? 'opacity-50 cursor-not-allowed' : ''}`;
+  const secondaryClassName = `mt-6 w-full py-3 rounded-xl font-medium text-sm text-center block border border-[rgba(255,255,255,0.12)] text-white hover:border-[rgba(255,255,255,0.25)] hover:bg-[rgba(255,255,255,0.04)] transition-all ${loading ? 'opacity-50 cursor-not-allowed' : ''}`;
 
   const baseClassName = buttonVariant === 'primary' ? primaryClassName : secondaryClassName;
 
   return (
     <div
-      className={`relative rounded-2xl border bg-[rgba(255,255,255,0.03)] p-8 ${
+      className={`relative rounded-2xl border bg-[rgba(255,255,255,0.03)] p-6 flex flex-col ${
         featured
           ? 'border-[rgba(26,58,138,0.4)] shadow-[0_0_30px_rgba(26,58,138,0.15)]'
           : 'border-[rgba(255,255,255,0.06)]'
@@ -164,7 +233,7 @@ function PricingCard({
       {featured && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <span className="bg-gradient-to-b from-[#1a3a8a] to-[#2a4faa] text-white text-xs font-medium px-4 py-1 rounded-full shadow-[0_4px_6px_rgba(26,58,138,0.25)]">
-            Recommended
+            Most Popular
           </span>
         </div>
       )}
@@ -173,22 +242,20 @@ function PricingCard({
         <h3 className="text-lg font-medium text-white">
           {plan.name}
         </h3>
+        <p className="text-xs text-[#5a6a8a] mt-1">{plan.description}</p>
         <div className="mt-4">
-          <span className="text-4xl font-semibold text-white">
+          <span className="text-3xl font-semibold text-white">
             ${plan.price}
           </span>
           {plan.price > 0 && (
-            <span className="text-[#8090b8]">/month</span>
+            <span className="text-[#8090b8] text-sm">/mo</span>
           )}
         </div>
-        <p className="mt-2 text-sm text-[#5a6a8a]">
-          {plan.price === 0 ? 'Self-hosted' : 'Fully managed'}
-        </p>
       </div>
 
-      <ul className="mt-8 space-y-3">
+      <ul className="mt-6 space-y-2.5 flex-1">
         {plan.features.map((feature, i) => (
-          <li key={i} className="flex items-start gap-3">
+          <li key={i} className="flex items-start gap-2">
             <span className="text-[#22c55e] mt-0.5 shrink-0">
               <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 8l3 3 5-5" />
@@ -200,15 +267,36 @@ function PricingCard({
       </ul>
 
       {buttonHref ? (
-        <Link href={buttonHref} className={baseClassName}>
+        <a href={buttonHref} target="_blank" rel="noopener noreferrer" className={baseClassName}>
           {buttonText}
-        </Link>
+        </a>
       ) : (
         <button onClick={onSubscribe} disabled={loading} className={baseClassName}>
           {loading ? 'Loading...' : buttonText}
         </button>
       )}
     </div>
+  );
+}
+
+function CompareRow({ label, values }: { label: string; values: (string | boolean)[] }) {
+  return (
+    <tr className="border-b border-[rgba(255,255,255,0.04)]">
+      <td className="p-4 text-[#8090b8]">{label}</td>
+      {values.map((value, i) => (
+        <td key={i} className={`p-4 text-center ${i === 2 ? 'bg-[rgba(26,58,138,0.1)]' : ''}`}>
+          {typeof value === 'boolean' ? (
+            value ? (
+              <span className="text-[#22c55e]">✓</span>
+            ) : (
+              <span className="text-[#5a6a8a]">—</span>
+            )
+          ) : (
+            <span className="text-white">{value}</span>
+          )}
+        </td>
+      ))}
+    </tr>
   );
 }
 

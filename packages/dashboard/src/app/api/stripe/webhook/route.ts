@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getDatabase } from '@/lib/firebase-admin';
 
+// Trial configuration (must match checkout route)
+const TRIAL_TRANSLATIONS_LIMIT = 500;
+
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) {
@@ -15,11 +18,15 @@ function getStripe() {
 /**
  * Map Stripe price ID to plan ID.
  */
-function getPlanFromPrice(priceId: string): 'free' | 'pro' | 'enterprise' {
+function getPlanFromPrice(priceId: string): 'free' | 'starter' | 'pro' | 'scale' | 'enterprise' {
+  const starterPriceId = process.env.STRIPE_STARTER_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID;
   const proPriceId = process.env.STRIPE_PRO_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID;
+  const scalePriceId = process.env.STRIPE_SCALE_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID;
   const enterprisePriceId = process.env.STRIPE_ENTERPRISE_PRICE_ID;
 
+  if (priceId === starterPriceId) return 'starter';
   if (priceId === proPriceId) return 'pro';
+  if (priceId === scalePriceId) return 'scale';
   if (priceId === enterprisePriceId) return 'enterprise';
   return 'pro'; // Default to pro for unknown prices
 }
@@ -71,18 +78,23 @@ export async function POST(request: NextRequest) {
           // Fetch the full subscription to get details
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const priceId = subscription.items.data[0]?.price?.id || '';
+          const isTrialing = subscription.status === 'trialing';
 
           await db.upsertSubscription({
             userId,
             stripeCustomerId: session.customer as string,
             stripeSubscriptionId: subscriptionId,
             planId: getPlanFromPrice(priceId),
-            status: 'active',
+            status: isTrialing ? 'trialing' : 'active',
             currentPeriodEnd: new Date(subscription.current_period_end * 1000),
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            // Trial tracking
+            trialStart: isTrialing ? new Date() : undefined,
+            trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : undefined,
+            trialTranslationsLimit: isTrialing ? TRIAL_TRANSLATIONS_LIMIT : undefined,
           });
 
-          console.log(`Subscription created for user ${userId}: ${subscriptionId}`);
+          console.log(`Subscription created for user ${userId}: ${subscriptionId} (${isTrialing ? 'trialing' : 'active'})`);
         }
         break;
       }
@@ -115,6 +127,8 @@ export async function POST(request: NextRequest) {
           status,
           currentPeriodEnd: new Date(subscription.current_period_end * 1000),
           cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          // Preserve trial data
+          trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : undefined,
         });
 
         console.log(`Subscription updated for user ${existingSub.userId}: ${status}`);

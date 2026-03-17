@@ -12,46 +12,103 @@ export const PLANS = {
     name: 'Free',
     price: 0,
     priceId: null,
+    description: 'Self-hosted',
     features: [
-      'CLI & SDK access',
+      'Full SDK & CLI access',
       'Unlimited self-hosted translations',
-      'Community support',
       '3 AI providers (Gemini, OpenAI, Claude)',
       'Deploy your own Cloud Functions',
+      'Community support',
     ],
     limits: {
-      teamMembers: 1,
+      translations: -1, // unlimited (self-hosted)
       projects: 1,
+      teamMembers: 1,
     },
+  },
+  starter: {
+    id: 'starter',
+    name: 'Starter',
+    price: 19,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID,
+    description: 'For small projects',
+    features: [
+      '2,000 translations/month',
+      'Fully managed — no code needed',
+      'No AI API keys needed',
+      'Hosted dashboard',
+      '1 team member',
+      '3 projects',
+      'Email support',
+    ],
+    limits: {
+      translations: 2000,
+      projects: 3,
+      teamMembers: 1,
+    },
+    overage: 0.008, // $0.008 per translation over limit
   },
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 29,
+    price: 49,
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
+    description: 'For growing teams',
+    popular: true,
     features: [
-      'Fully managed translations',
-      'No Cloud Functions needed',
-      'No AI API keys needed',
-      'Hosted dashboard',
+      '10,000 translations/month',
+      'Everything in Starter',
       'Up to 5 team members',
-      'Unlimited projects',
-      'Priority email support',
+      '10 projects',
+      'Priority support',
+      'Translation analytics',
     ],
     limits: {
+      translations: 10000,
+      projects: 10,
       teamMembers: 5,
-      projects: -1, // unlimited
     },
+    overage: 0.005, // $0.005 per translation over limit
+  },
+  scale: {
+    id: 'scale',
+    name: 'Scale',
+    price: 149,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID,
+    description: 'For high-volume apps',
+    features: [
+      '50,000 translations/month',
+      'Everything in Pro',
+      'Unlimited team members',
+      'Unlimited projects',
+      'Slack support',
+      'Custom AI model selection',
+    ],
+    limits: {
+      translations: 50000,
+      projects: -1, // unlimited
+      teamMembers: -1, // unlimited
+    },
+    overage: 0.003, // $0.003 per translation over limit
   },
 } as const;
 
 export type PlanId = keyof typeof PLANS;
+
+// Trial configuration
+export const TRIAL_CONFIG = {
+  durationDays: 14,
+  translationLimit: 500,
+} as const;
 
 export interface Subscription {
   planId: PlanId;
   status: 'active' | 'canceled' | 'past_due' | 'trialing';
   currentPeriodEnd: Date;
   cancelAtPeriodEnd: boolean;
+  trialEnd?: Date;
+  translationsUsed?: number;
+  translationsLimit?: number;
 }
 
 /**
