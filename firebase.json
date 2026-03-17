@@ -1,7 +1,7 @@
 {
   "apphosting": {
     "backendId": "melaka-cloud-backend",
-    "rootDir": ".",
+    "rootDir": "packages/dashboard",
     "ignore": [
       "node_modules",
       ".git",
