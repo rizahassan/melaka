@@ -6,6 +6,9 @@ on:
     paths:
       - 'services/listener/**'
       - 'services/worker/**'
+      - 'packages/dashboard/**'
+      - 'packages/core/**'
+      - 'packages/cloud/**'
       - '.github/workflows/deploy-services.yml'
   workflow_dispatch:
     inputs:
@@ -18,6 +21,7 @@ on:
           - all
           - listener
           - worker
+          - dashboard
 
 env:
   PROJECT_ID: melaka-cloud
@@ -29,6 +33,7 @@ jobs:
     outputs:
       listener: ${{ steps.changes.outputs.listener }}
       worker: ${{ steps.changes.outputs.worker }}
+      dashboard: ${{ steps.changes.outputs.dashboard }}
     steps:
       - uses: actions/checkout@v4
       
@@ -46,20 +51,34 @@ jobs:
             else
               echo "worker=false" >> $GITHUB_OUTPUT
             fi
+            if [[ "${{ inputs.service }}" == "all" || "${{ inputs.service }}" == "dashboard" ]]; then
+              echo "dashboard=true" >> $GITHUB_OUTPUT
+            else
+              echo "dashboard=false" >> $GITHUB_OUTPUT
+            fi
           else
             # Check git diff for push events
             git fetch origin ${{ github.event.before }} --depth=1 2>/dev/null || true
             
-            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^services/listener/'; then
+            CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} 2>/dev/null || echo "")
+            
+            if echo "$CHANGED" | grep -q '^services/listener/'; then
               echo "listener=true" >> $GITHUB_OUTPUT
             else
               echo "listener=false" >> $GITHUB_OUTPUT
             fi
             
-            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^services/worker/'; then
+            if echo "$CHANGED" | grep -q '^services/worker/'; then
               echo "worker=true" >> $GITHUB_OUTPUT
             else
               echo "worker=false" >> $GITHUB_OUTPUT
+            fi
+            
+            # Dashboard depends on dashboard, core, and cloud packages
+            if echo "$CHANGED" | grep -qE '^packages/(dashboard|core|cloud)/'; then
+              echo "dashboard=true" >> $GITHUB_OUTPUT
+            else
+              echo "dashboard=false" >> $GITHUB_OUTPUT
             fi
           fi
 
@@ -82,7 +101,6 @@ jobs:
 
       - name: Deploy Listener
         run: |
-          # Submit build asynchronously
           BUILD_OUTPUT=$(gcloud builds submit \
             --config=services/listener/cloudbuild.yaml \
             --async \
@@ -91,7 +109,6 @@ jobs:
           BUILD_ID=$(echo "$BUILD_OUTPUT" | tail -1)
           echo "Build ID: $BUILD_ID"
           
-          # Poll for completion (avoid rate limits)
           echo "Waiting for build to complete..."
           while true; do
             sleep 30
@@ -133,7 +150,6 @@ jobs:
 
       - name: Deploy Worker
         run: |
-          # Submit build asynchronously
           BUILD_OUTPUT=$(gcloud builds submit \
             --config=services/worker/cloudbuild.yaml \
             --async \
@@ -142,7 +158,6 @@ jobs:
           BUILD_ID=$(echo "$BUILD_OUTPUT" | tail -1)
           echo "Build ID: $BUILD_ID"
           
-          # Poll for completion (avoid rate limits)
           echo "Waiting for build to complete..."
           while true; do
             sleep 30
@@ -164,3 +179,52 @@ jobs:
             --region=${{ env.REGION }} \
             --format='value(status.url)')
           echo "✅ Worker deployed: $URL"
+
+  deploy-dashboard:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.dashboard == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Deploy Dashboard
+        run: |
+          BUILD_OUTPUT=$(gcloud builds submit \
+            --config=packages/dashboard/cloudbuild.yaml \
+            --async \
+            --format='value(id)')
+          
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | tail -1)
+          echo "Build ID: $BUILD_ID"
+          
+          echo "Waiting for build to complete..."
+          while true; do
+            sleep 30
+            STATUS=$(gcloud builds describe "$BUILD_ID" --format='value(status)' 2>/dev/null || echo "PENDING")
+            echo "Status: $STATUS"
+            
+            if [[ "$STATUS" == "SUCCESS" ]]; then
+              echo "✅ Build succeeded"
+              break
+            elif [[ "$STATUS" == "FAILURE" || "$STATUS" == "CANCELLED" || "$STATUS" == "TIMEOUT" ]]; then
+              echo "❌ Build failed with status: $STATUS"
+              exit 1
+            fi
+          done
+
+      - name: Get Service URL
+        run: |
+          URL=$(gcloud run services describe melaka-dashboard \
+            --region=${{ env.REGION }} \
+            --format='value(status.url)')
+          echo "✅ Dashboard deployed: $URL"
