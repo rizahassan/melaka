@@ -83,7 +83,8 @@ jobs:
       - name: Deploy Listener
         run: |
           gcloud builds submit \
-            --config=services/listener/cloudbuild.yaml
+            --config=services/listener/cloudbuild.yaml \
+            --suppress-logs
 
       - name: Get Service URL
         run: |
@@ -112,7 +113,8 @@ jobs:
       - name: Deploy Worker
         run: |
           gcloud builds submit \
-            --config=services/worker/cloudbuild.yaml
+            --config=services/worker/cloudbuild.yaml \
+            --suppress-logs
 
       - name: Get Service URL
         run: |
