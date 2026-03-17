@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { type ProjectConfig } from '@melaka/cloud/dashboard';
 import { getDatabase } from '@/lib/firebase-admin';
+import { canCreateProject } from '@/lib/plan-limits';
+import type { PlanId } from '@/lib/stripe';
 
 /**
  * GET /api/projects - List projects for a user
@@ -60,6 +62,28 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Check project limit based on subscription
+    const subscription = await db.getSubscription(userId);
+    const planId: PlanId = subscription?.planId || 'free';
+    
+    // Only check limits for active/trialing subscriptions or free tier
+    const isActive = !subscription || subscription.status === 'active' || subscription.status === 'trialing';
+    
+    if (isActive) {
+      const existingProjects = await db.getProjectsByUser(userId);
+      
+      if (!canCreateProject(existingProjects.length, planId)) {
+        const planName = planId.charAt(0).toUpperCase() + planId.slice(1);
+        return NextResponse.json(
+          { 
+            error: `Project limit reached for ${planName} plan. Please upgrade to create more projects.`,
+            code: 'PROJECT_LIMIT_REACHED',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const body = await request.json();
     const { firebaseProjectId, name, config } = body as {
       firebaseProjectId: string;

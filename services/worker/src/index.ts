@@ -7,7 +7,7 @@
 
 import express from 'express';
 import { initializeApp, cert, type App } from 'firebase-admin/app';
-import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue, type Firestore } from 'firebase-admin/firestore';
 
 const app = express();
 app.use(express.json());
@@ -77,6 +77,45 @@ async function updateJobStatus(
     console.log(`Updated job ${jobId} status to ${status}`);
   } catch (err) {
     console.error(`Failed to update job ${jobId} status:`, err);
+  }
+}
+
+// Record usage for billing
+async function recordUsage(projectId: string, userId: string, charactersCount: number): Promise<void> {
+  if (!melakaDb) return;
+  
+  try {
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const usageId = `${projectId}_${periodStart.toISOString().slice(0, 7)}`;
+    const usageRef = melakaDb.collection('melaka_usage').doc(usageId);
+
+    await melakaDb.runTransaction(async (transaction) => {
+      const doc = await transaction.get(usageRef);
+
+      if (doc.exists) {
+        transaction.update(usageRef, {
+          translationsCount: FieldValue.increment(1),
+          charactersCount: FieldValue.increment(charactersCount),
+          apiCallsCount: FieldValue.increment(1),
+        });
+      } else {
+        transaction.set(usageRef, {
+          projectId,
+          userId,
+          periodStart: Timestamp.fromDate(periodStart),
+          periodEnd: Timestamp.fromDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+          translationsCount: 1,
+          charactersCount,
+          apiCallsCount: 1,
+          createdAt: Timestamp.now(),
+        });
+      }
+    });
+    
+    console.log(`Recorded usage for project ${projectId}`);
+  } catch (err) {
+    console.error('Failed to record usage:', err);
   }
 }
 
@@ -184,6 +223,8 @@ app.post('/translate', async (req, res) => {
   const startTime = Date.now();
   
   const {
+    projectId, // Melaka project ID
+    userId,    // User who owns the project
     firebaseProjectId,
     documentPath,
     sourceLocale,
@@ -230,6 +271,12 @@ app.post('/translate', async (req, res) => {
         translatedFields: translations,
         durationMs: duration,
       });
+    }
+
+    // Record usage for billing (if we have project/user info)
+    if (projectId && userId) {
+      const totalChars = Object.values(fields).join('').length;
+      await recordUsage(projectId, userId, totalChars);
     }
 
     res.json({

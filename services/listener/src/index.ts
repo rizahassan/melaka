@@ -135,6 +135,7 @@ const tasksClient = new CloudTasksClient();
 
 interface TranslationPayload {
   projectId: string;
+  userId: string;
   firebaseProjectId: string;
   documentPath: string;
   sourceLocale: string;
@@ -277,6 +278,7 @@ async function pollProject(project: ProjectDoc, accessToken: string): Promise<nu
         for (const targetLocale of targetLocales) {
           queueTranslation({
             projectId: project.id,
+            userId: project.userId,
             firebaseProjectId: project.firebaseProjectId,
             documentPath: parsed.path,
             sourceLocale,

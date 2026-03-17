@@ -18,6 +18,25 @@ interface Project {
   };
 }
 
+interface UsageData {
+  planId: string;
+  status: string;
+  translations: {
+    used: number;
+    limit: number;
+    remaining: number;
+    isOverage: boolean;
+  };
+  projects: {
+    count: number;
+    limit: number;
+  };
+  trial?: {
+    isTrialing: boolean;
+    trialEnd: string | null;
+  };
+}
+
 interface DashboardStats {
   totalTranslations: number;
   translationsThisMonth: number;
@@ -67,6 +86,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [usage, setUsage] = useState<UsageData | null>(null);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
   useEffect(() => {
@@ -77,17 +97,20 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
-      fetchProjects();
+      fetchData();
     }
   }, [user]);
 
-  async function fetchProjects() {
+  async function fetchData() {
     try {
-      const res = await fetch('/api/projects', {
-        headers: { 'x-user-id': user?.uid || '' },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      // Fetch projects and usage in parallel
+      const [projectsRes, usageRes] = await Promise.all([
+        fetch('/api/projects', { headers: { 'x-user-id': user?.uid || '' } }),
+        fetch('/api/usage', { headers: { 'x-user-id': user?.uid || '' } }),
+      ]);
+      
+      if (projectsRes.ok) {
+        const data = await projectsRes.json();
         setProjects(data.projects || []);
         
         // Calculate stats from projects
@@ -101,8 +124,19 @@ export default function DashboardPage() {
           });
         }
       }
+      
+      if (usageRes.ok) {
+        const usageData = await usageRes.json();
+        setUsage(usageData);
+        // Update stats with usage data
+        setStats(prev => prev ? {
+          ...prev,
+          totalTranslations: usageData.translations?.used || 0,
+          translationsThisMonth: usageData.translations?.used || 0,
+        } : null);
+      }
     } catch (error) {
-      console.error('Failed to fetch projects:', error);
+      console.error('Failed to fetch data:', error);
     } finally {
       setLoadingProjects(false);
     }
@@ -169,6 +203,44 @@ export default function DashboardPage() {
         {/* Has projects - show dashboard */}
         {!loadingProjects && projects.length > 0 && (
           <>
+            {/* Usage Banner */}
+            {usage && (
+              <section className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-base font-medium text-white">
+                      {usage.planId.charAt(0).toUpperCase() + usage.planId.slice(1)} Plan
+                      {usage.trial?.isTrialing && (
+                        <span className="ml-2 text-xs bg-[rgba(212,160,23,0.2)] text-[#d4a017] px-2 py-0.5 rounded-full">
+                          Trial
+                        </span>
+                      )}
+                    </h2>
+                    <p className="text-sm text-[#5a6a8a] mt-0.5">
+                      {usage.translations.limit === -1 
+                        ? 'Unlimited translations (self-hosted)'
+                        : `${usage.translations.used.toLocaleString()} / ${usage.translations.limit.toLocaleString()} translations this month`
+                      }
+                    </p>
+                  </div>
+                  <Link
+                    href="/pricing"
+                    className="text-sm text-[#1a3a8a] hover:text-[#2a4faa] transition-colors"
+                  >
+                    {usage.planId === 'free' ? 'Upgrade' : 'Manage Plan'} →
+                  </Link>
+                </div>
+                {usage.translations.limit !== -1 && (
+                  <div className="w-full bg-[rgba(255,255,255,0.06)] rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${usage.translations.isOverage ? 'bg-[#cc3232]' : 'bg-[#22c55e]'}`}
+                      style={{ width: `${Math.min(100, (usage.translations.used / usage.translations.limit) * 100)}%` }} 
+                    />
+                  </div>
+                )}
+              </section>
+            )}
+
             {/* Stats */}
             <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard label="Total Translations" value={stats?.totalTranslations || 0} />

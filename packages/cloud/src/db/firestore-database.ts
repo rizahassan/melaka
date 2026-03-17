@@ -353,6 +353,35 @@ export class MelakaFirestoreDatabase {
     return snapshot.docs.map((doc) => doc.data()) as UsageDoc[];
   }
 
+  /**
+   * Get total usage for a user across all their projects for the current billing period.
+   */
+  async getUserTotalUsage(userId: string): Promise<{ translationsCount: number; charactersCount: number }> {
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodKey = periodStart.toISOString().slice(0, 7);
+
+    const snapshot = await this.db
+      .collection(COLLECTIONS.usage)
+      .where('userId', '==', userId)
+      .get();
+
+    // Filter to current period in memory (userId already indexed)
+    let translationsCount = 0;
+    let charactersCount = 0;
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data() as UsageDoc;
+      // Check if this is current period by looking at doc ID suffix
+      if (doc.id.endsWith(periodKey)) {
+        translationsCount += data.translationsCount || 0;
+        charactersCount += data.charactersCount || 0;
+      }
+    }
+
+    return { translationsCount, charactersCount };
+  }
+
   // ==================== Translation Jobs ====================
 
   async createJob(data: {
