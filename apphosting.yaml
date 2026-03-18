@@ -8,16 +8,97 @@ runConfig:
   # memoryMiB: 512
 
 # Environment variables and secrets.
-# env:
-  # Configure environment variables.
-  # See https://firebase.google.com/docs/app-hosting/configure#user-defined-environment
-  # - variable: MESSAGE
-  #   value: Hello world!
-  #   availability:
-  #     - BUILD
-  #     - RUNTIME
+env:
+  # Firebase (for client-side auth)
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyBl2r9RuW1kb0qmsUbRcRWAnU1KbFlK44c
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: melaka-cloud.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: melaka-cloud
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: melaka-cloud.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "436068076781"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:436068076781:web:344290d9918ec7f86d90e4
+    availability:
+      - BUILD
+      - RUNTIME
 
-  # Grant access to secrets in Cloud Secret Manager.
-  # See https://firebase.google.com/docs/app-hosting/configure#secret-parameters
-  # - variable: MY_SECRET
-  #   secret: mySecretRef
+  # Stripe Public Keys
+  - variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    value: pk_test_51TC6KJJ3aB4vNxKOEJKwf1AZKSoQMfjp6qmiF7ISfLkQbUMbFWyZ8vrdtqelSMTR33lNvhiLV8MQLnz1U1jFF3tj00M8vBgXUH
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID
+    value: prod_UARGQdBqXImZ6h
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_STRIPE_PRO_PRICE_ID
+    value: prod_UARHrugTvSvElJ
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID
+    value: prod_UARHDmJEtkvBpF
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Stripe Secrets (from Secret Manager)
+  - variable: STRIPE_SECRET_KEY
+    secret: stripe-secret-key
+  - variable: STRIPE_WEBHOOK_SECRET
+    secret: stripe-webhook-secret
+
+  # Firebase Admin (from Secret Manager)
+  - variable: FIREBASE_SERVICE_ACCOUNT_JSON
+    secret: firebase-service-account
+
+  # Other secrets
+  - variable: ENCRYPTION_KEY
+    secret: melaka-encryption-key
+  - variable: GOOGLE_CLIENT_ID
+    value: 436068076781-3a0tnjfp3ogst509ds6osj9vohaatate.apps.googleusercontent.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: GOOGLE_CLIENT_SECRET
+    secret: google-oauth-client-secret
+  - variable: GEMINI_API_KEY
+    secret: gemini-api-key
+
+  # Cloud Tasks
+  - variable: CLOUD_TASKS_PROJECT_ID
+    value: melaka-cloud
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: CLOUD_TASKS_LOCATION
+    value: us-central1
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: CLOUD_TASKS_QUEUE_NAME
+    value: melaka-translations
+    availability:
+      - BUILD
+      - RUNTIME
