@@ -12,7 +12,6 @@ on:
 
 env:
   PROJECT_ID: melaka-cloud
-  REGION: us-central1
 
 jobs:
   deploy:
@@ -20,45 +19,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: |
+          pnpm --filter @melaka/core build
+          pnpm --filter @melaka/cloud build
+          pnpm --filter @melaka/dashboard build
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-
-      - name: Deploy Dashboard to Cloud Run
+      - name: Deploy to Firebase App Hosting
         run: |
-          BUILD_OUTPUT=$(gcloud builds submit \
-            --config=packages/dashboard/cloudbuild.yaml \
-            --async \
-            --format='value(id)')
-          
-          BUILD_ID=$(echo "$BUILD_OUTPUT" | tail -1)
-          echo "Build ID: $BUILD_ID"
-          
-          echo "Waiting for build to complete..."
-          while true; do
-            sleep 30
-            STATUS=$(gcloud builds describe "$BUILD_ID" --format='value(status)' 2>/dev/null || echo "PENDING")
-            echo "Status: $STATUS"
-            
-            if [[ "$STATUS" == "SUCCESS" ]]; then
-              echo "✅ Build succeeded"
-              break
-            elif [[ "$STATUS" == "FAILURE" || "$STATUS" == "CANCELLED" || "$STATUS" == "TIMEOUT" ]]; then
-              echo "❌ Build failed with status: $STATUS"
-              exit 1
-            fi
-          done
-
-      - name: Get Service URL
-        run: |
-          URL=$(gcloud run services describe melaka-dashboard \
-            --region=${{ env.REGION }} \
-            --format='value(status.url)')
-          echo "✅ Dashboard deployed: $URL"
-          echo "DASHBOARD_URL=$URL" >> $GITHUB_OUTPUT
+          npm install -g firebase-tools
+          firebase deploy --only apphosting --project ${{ env.PROJECT_ID }} --non-interactive
