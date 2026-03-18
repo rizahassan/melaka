@@ -76,8 +76,9 @@ export async function POST(request: NextRequest) {
     if (customerId) {
       sessionParams.customer = customerId;
     } else {
-      // Collect email if new customer
-      sessionParams.customer_creation = 'always';
+      // In subscription mode, customer is created automatically
+      // Just need to collect their email
+      sessionParams.customer_email = request.headers.get('x-user-email') || undefined;
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
