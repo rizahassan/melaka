@@ -48,24 +48,24 @@ env:
       - BUILD
       - RUNTIME
 
-  # Stripe Public Keys
+  # Stripe Public Keys (LIVE)
   - variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-    value: pk_test_51TC6KJJ3aB4vNxKOEJKwf1AZKSoQMfjp6qmiF7ISfLkQbUMbFWyZ8vrdtqelSMTR33lNvhiLV8MQLnz1U1jFF3tj00M8vBgXUH
+    value: pk_live_51TC6K8R648ktb6TL5aGBNVNWOJDDofBZFtHKlnaH8CK28AmrVwz549v9WJYVaaThWpzNZK9RH5MWVa5JlZV2mV6k00mUps80eJ
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID
-    value: prod_UARGQdBqXImZ6h
+    value: price_1TCbsQR648ktb6TLcu5MKqLr
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_STRIPE_PRO_PRICE_ID
-    value: prod_UARHrugTvSvElJ
+    value: price_1TCbsNR648ktb6TLE9z3SSAC
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID
-    value: prod_UARHDmJEtkvBpF
+    value: price_1TCbsJR648ktb6TL8YJBm6Ej
     availability:
       - BUILD
       - RUNTIME
