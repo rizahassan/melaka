@@ -274,7 +274,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-3">
                         <StatusBadge status={project.status} />
                         <Link
-                          href={`/projects/${project.id}`}
+                          href="/settings"
                           className="text-sm text-[#1a3a8a] hover:text-[#2a4faa] transition-colors"
                         >
                           Manage →

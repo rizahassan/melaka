@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/firebase-admin';
 import { getPlanLimits, getTranslationsRemaining, getOverageCount, calculateOverageCost } from '@/lib/plan-limits';
-import type { PlanId } from '@/lib/stripe';
+import type { PlanId } from '@/lib/plans';
 
 /**
  * GET /api/usage - Get usage stats for the current user
@@ -24,14 +24,14 @@ export async function GET(request: NextRequest) {
     const limits = getPlanLimits(planId);
     
     // Get current period usage
-    const usage = await db.getUserTotalUsage(userId);
+    const usageStats = await db.getUserTotalUsage(userId);
     
-    // Get project count
+    // Get projects
     const projects = await db.getProjectsByUser(userId);
     
     // Calculate limits and overage
-    const translationsRemaining = getTranslationsRemaining(usage.translationsCount, planId);
-    const overageCount = getOverageCount(usage.translationsCount, planId);
+    const translationsRemaining = getTranslationsRemaining(usageStats.translationsCount, planId);
+    const overageCount = getOverageCount(usageStats.translationsCount, planId);
     const overageCost = calculateOverageCost(overageCount, planId);
     
     // Trial info
@@ -42,16 +42,27 @@ export async function GET(request: NextRequest) {
       trialTranslationsLimit: subscription.trialTranslationsLimit || 500,
     } : null;
 
+    // Build byProject array (placeholder - jobs per project would need separate query)
+    const byProject = projects.map((p) => ({
+      projectId: p.id,
+      projectName: p.name,
+      totalJobs: 0,
+      completed: 0,
+      failed: 0,
+      pending: 0,
+    }));
+
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
     return NextResponse.json({
+      // Top-level plan info
       planId,
       status: subscription?.status || 'free',
       currentPeriod: {
-        start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
-        end: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString(),
-      },
-      usage: {
-        translations: usage.translationsCount,
-        characters: usage.charactersCount,
+        start: periodStart.toISOString(),
+        end: periodEnd.toISOString(),
       },
       limits: {
         translations: limits.translations,
@@ -63,7 +74,7 @@ export async function GET(request: NextRequest) {
         remaining: limits.projects === -1 ? Infinity : Math.max(0, limits.projects - projects.length),
       },
       translations: {
-        used: usage.translationsCount,
+        used: usageStats.translationsCount,
         limit: limits.translations,
         remaining: translationsRemaining,
         isOverage: overageCount > 0,
@@ -72,11 +83,23 @@ export async function GET(request: NextRequest) {
         overageRate: limits.overage,
       },
       trial: trialInfo,
+      
+      // Nested usage object for settings page compatibility
+      usage: {
+        totalTranslations: usageStats.translationsCount,
+        totalDocuments: usageStats.charactersCount,
+        byProject,
+        period: {
+          start: periodStart.toISOString(),
+          end: periodEnd.toISOString(),
+        },
+      },
     });
   } catch (error) {
     console.error('Failed to get usage:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to get usage' },
+      { error: 'Failed to get usage', details: message },
       { status: 500 }
     );
   }

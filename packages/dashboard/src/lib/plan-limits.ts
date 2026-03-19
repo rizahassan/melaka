@@ -2,7 +2,10 @@
  * Plan limits and enforcement utilities.
  */
 
-import { PLANS, type PlanId } from './stripe';
+import { PLANS, type PlanId } from './plans';
+
+export type { PlanId } from './plans';
+export { PLANS } from './plans';
 
 export interface PlanLimits {
   translations: number; // -1 = unlimited

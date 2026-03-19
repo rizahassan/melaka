@@ -22,7 +22,7 @@ interface Project {
 }
 
 interface SubscriptionData {
-  planId: 'free' | 'pro' | 'enterprise';
+  planId: 'free' | 'starter' | 'pro' | 'scale' | 'enterprise';
   status: 'active' | 'canceled' | 'past_due' | 'trialing';
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
@@ -120,9 +120,16 @@ function SubscriptionBadge({ status }: { status: string }) {
     canceled: 'bg-[rgba(204,50,50,0.1)] border-[rgba(204,50,50,0.2)] text-[#cc3232]',
   };
 
+  const labels: Record<string, string> = {
+    active: 'Active',
+    trialing: 'Free Trial',
+    past_due: 'Past Due',
+    canceled: 'Canceled',
+  };
+
   return (
     <span className={`px-3 py-0.5 rounded-full text-xs font-medium border ${styles[status] || styles.active}`}>
-      {status.replace('_', ' ')}
+      {labels[status] || status.replace('_', ' ')}
     </span>
   );
 }
@@ -240,7 +247,8 @@ function SettingsContent() {
   };
 
   const activeProject = projects.find((p) => p.status === 'active') || projects[0];
-  const currentPlan = PLANS[subscription?.planId === 'pro' ? 'pro' : 'free'];
+  const planId = subscription?.planId || 'free';
+  const currentPlan = PLANS[planId as keyof typeof PLANS] || PLANS.free;
 
   // Initialize language editing state when project loads
   useEffect(() => {
@@ -406,14 +414,14 @@ function SettingsContent() {
                   <p className="text-xs text-[#5a6a8a] mt-1">Completed</p>
                 </div>
                 <div className="p-4 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] text-center">
-                  <p className="text-2xl font-semibold text-white">{usage.byProject.length}</p>
+                  <p className="text-2xl font-semibold text-white">{usage.byProject?.length ?? 0}</p>
                   <p className="text-xs text-[#5a6a8a] mt-1">Projects</p>
                 </div>
               </div>
 
-              {usage.byProject.length > 0 && (
+              {(usage.byProject?.length ?? 0) > 0 && (
                 <div className="space-y-2">
-                  {usage.byProject.map((p) => (
+                  {usage.byProject?.map((p) => (
                     <div key={p.projectId} className="flex items-center justify-between p-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]">
                       <span className="text-sm text-white">{p.projectName}</span>
                       <div className="flex items-center gap-3 text-xs">

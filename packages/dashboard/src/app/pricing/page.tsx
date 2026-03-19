@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { PLANS, TRIAL_CONFIG, redirectToCheckout } from '@/lib/stripe';
+import { PLANS, TRIAL_CONFIG, redirectToCheckout, getPriceId } from '@/lib/stripe';
 import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/lib/auth';
@@ -73,7 +73,7 @@ export default function PricingPage() {
           {/* Starter */}
           <PricingCard
             plan={PLANS.starter}
-            onSubscribe={() => handleSubscribe('starter', PLANS.starter.priceId || null)}
+            onSubscribe={() => handleSubscribe('starter', getPriceId('starter'))}
             buttonText="Start Free Trial"
             buttonVariant="secondary"
             loading={loading === 'starter'}
@@ -82,7 +82,7 @@ export default function PricingPage() {
           {/* Pro */}
           <PricingCard
             plan={PLANS.pro}
-            onSubscribe={() => handleSubscribe('pro', PLANS.pro.priceId || null)}
+            onSubscribe={() => handleSubscribe('pro', getPriceId('pro'))}
             buttonText="Start Free Trial"
             buttonVariant="primary"
             featured
@@ -92,7 +92,7 @@ export default function PricingPage() {
           {/* Scale */}
           <PricingCard
             plan={PLANS.scale}
-            onSubscribe={() => handleSubscribe('scale', PLANS.scale.priceId || null)}
+            onSubscribe={() => handleSubscribe('scale', getPriceId('scale'))}
             buttonText="Start Free Trial"
             buttonVariant="secondary"
             loading={loading === 'scale'}

@@ -9,6 +9,13 @@ runConfig:
 
 # Environment variables and secrets.
 env:
+  # App URL
+  - variable: NEXT_PUBLIC_APP_URL
+    value: https://melaka.dev
+    availability:
+      - BUILD
+      - RUNTIME
+
   # Firebase (for client-side auth)
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyBl2r9RuW1kb0qmsUbRcRWAnU1KbFlK44c
