@@ -39,16 +39,16 @@ export function useAuth() {
 }
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyBl2r9RuW1kb0qmsUbRcRWAnU1KbFlK44c',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'melaka-cloud.firebaseapp.com',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'melaka-cloud',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'melaka-cloud.firebasestorage.app',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '436068076781',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:436068076781:web:344290d9918ec7f86d90e4',
 };
 
 // Initialize Firebase
-if (getApps().length === 0 && firebaseConfig.apiKey) {
+if (getApps().length === 0) {
   initializeApp(firebaseConfig);
 }
 
