@@ -30,6 +30,8 @@ jobs:
 
       - name: Build
         run: pnpm build
+        env:
+          TURBO_FORCE: true
 
       - name: Test
         run: pnpm test

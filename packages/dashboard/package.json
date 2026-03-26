@@ -5,6 +5,7 @@
   "description": "Melaka Translation Review Dashboard",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "cd ../core && pnpm build && cd ../ai && pnpm build && cd ../cloud && pnpm build",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

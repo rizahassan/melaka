@@ -7,5 +7,6 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: ['@melaka/ai', '@melaka/core', 'firebase-admin', '@google-cloud/tasks', 'google-auth-library'],
+  skipNodeModulesBundle: true,
+  noExternal: [], // Bundle nothing extra
 });
