@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOAuthManager } from '@/lib/firebase-admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
+  // Rate limit: 10 auth requests per minute
+  const rateLimitResponse = await checkRateLimit(request, 'auth');
+  if (rateLimitResponse) return rateLimitResponse;
+
   const oauth = getOAuthManager();
   if (!oauth) {
     return NextResponse.json({ error: 'OAuth not configured' }, { status: 500 });

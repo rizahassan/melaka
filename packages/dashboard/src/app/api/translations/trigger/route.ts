@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/firebase-admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
@@ -49,6 +50,10 @@ async function translateWithGemini(
  * Body: { projectId, documentPath, fields, targetLocales }
  */
 export async function POST(request: NextRequest) {
+  // Rate limit: 30 translation requests per minute
+  const rateLimitResponse = await checkRateLimit(request, 'translation');
+  if (rateLimitResponse) return rateLimitResponse;
+
   const db = getDatabase();
   if (!db) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });

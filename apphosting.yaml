@@ -16,6 +16,27 @@ env:
       - BUILD
       - RUNTIME
 
+  # Sentry (Error Monitoring)
+  - variable: NEXT_PUBLIC_SENTRY_DSN
+    value: ""  # Add your Sentry DSN here
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: SENTRY_ORG
+    value: vehan-apps
+    availability:
+      - BUILD
+  - variable: SENTRY_PROJECT
+    value: melaka
+    availability:
+      - BUILD
+
+  # Upstash Redis (Rate Limiting) - Optional
+  - variable: UPSTASH_REDIS_REST_URL
+    secret: upstash-redis-url
+  - variable: UPSTASH_REDIS_REST_TOKEN
+    secret: upstash-redis-token
+
   # Firebase (for client-side auth)
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyBl2r9RuW1kb0qmsUbRcRWAnU1KbFlK44c

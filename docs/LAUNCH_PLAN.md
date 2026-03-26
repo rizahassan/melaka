@@ -3,11 +3,11 @@
 ## Pre-Launch Checklist
 
 ### Technical Readiness
-- [ ] **Production stability** — Test full flow on melaka.dev (sign up → connect Firebase → translate → billing)
-- [ ] **Stripe live mode** — Verify webhook receives events, subscriptions activate
-- [ ] **Error monitoring** — Set up Sentry or similar for production errors
-- [ ] **Rate limiting** — Add rate limits to public APIs to prevent abuse
-- [ ] **Backup plan** — Firestore PITR enabled for melaka-cloud project
+- [x] **Production stability** — Test full flow on melaka.dev (sign up → connect Firebase → translate → billing)
+- [x] **Stripe live mode** — Verify webhook receives events, subscriptions activate
+- [x] **Error monitoring** — Sentry integration added (@sentry/nextjs)
+- [x] **Rate limiting** — Upstash Redis rate limiting on API routes (60/min default, 10/min auth, 30/min translations)
+- [x] **Backup plan** — Firestore PITR enabled + delete protection on melaka-cloud project
 
 ### Documentation
 - [ ] **Landing page copy** — Clear value prop, pricing, how it works
