@@ -18,7 +18,7 @@ env:
 
   # Sentry (Error Monitoring)
   - variable: NEXT_PUBLIC_SENTRY_DSN
-    value: ""  # Add your Sentry DSN here
+    value: "https://383248452dcdda0f7775e5c58bf73d02@o4511108722065408.ingest.us.sentry.io/4511108724359168"
     availability:
       - BUILD
       - RUNTIME
