@@ -73,7 +73,7 @@ export async function checkRateLimit(
   // Get identifier (IP address or user ID)
   const identifier = request.headers.get('x-user-id') || 
     request.headers.get('x-forwarded-for')?.split(',')[0] || 
-    request.ip || 
+    request.headers.get('x-real-ip') ||
     'anonymous';
 
   const { success, limit, remaining, reset } = await limiter.limit(identifier);
