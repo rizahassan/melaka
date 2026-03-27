@@ -10,14 +10,14 @@
 - [x] **Backup plan** — Firestore PITR enabled + delete protection on melaka-cloud project
 
 ### Documentation
-- [ ] **Landing page copy** — Clear value prop, pricing, how it works
-- [ ] **Quick start guide** — 5-minute setup tutorial
-- [ ] **API docs** — Document SDK methods and CLI commands
-- [ ] **FAQ** — Common questions about pricing, security, data handling
+- [x] **Landing page copy** — Clear value prop, pricing, how it works
+- [x] **Quick start guide** — 5-minute setup tutorial
+- [x] **API docs** — Document SDK methods and CLI commands
+- [x] **FAQ** — Common questions about pricing, security, data handling
 
 ### Legal & Compliance
-- [ ] **Privacy Policy** — How you handle customer Firebase data
-- [ ] **Terms of Service** — Usage terms, liability, refunds
+- [x] **Privacy Policy** — How you handle customer Firebase data
+- [x] **Terms of Service** — Usage terms, liability, refunds
 - [ ] **Data Processing Agreement** — For enterprise customers
 - [ ] **GDPR considerations** — Data residency, deletion requests
 
