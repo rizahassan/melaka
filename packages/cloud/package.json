@@ -4,15 +4,12 @@
   "description": "Melaka Cloud - Fully managed translation service",
   "type": "module",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./dist/index.js"
     },
     "./dashboard": {
-      "import": "./dist/dashboard.js",
-      "types": "./dist/dashboard.d.ts"
+      "import": "./dist/dashboard.js"
     }
   },
   "scripts": {
