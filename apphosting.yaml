@@ -32,10 +32,13 @@ env:
       - BUILD
 
   # Upstash Redis (Rate Limiting) - Optional
-  - variable: UPSTASH_REDIS_REST_URL
-    secret: upstash-redis-url
-  - variable: UPSTASH_REDIS_REST_TOKEN
-    secret: upstash-redis-token
+  # Uncomment after setting up Upstash and creating secrets:
+  # firebase apphosting:secrets:set upstash-redis-url
+  # firebase apphosting:secrets:set upstash-redis-token
+  # - variable: UPSTASH_REDIS_REST_URL
+  #   secret: upstash-redis-url
+  # - variable: UPSTASH_REDIS_REST_TOKEN
+  #   secret: upstash-redis-token
 
   # Firebase (for client-side auth)
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
@@ -113,6 +116,10 @@ env:
     secret: google-oauth-client-secret
   - variable: GEMINI_API_KEY
     secret: gemini-api-key
+
+  # Firebase runtime config (optional, auto-detected in App Hosting)
+  # - variable: FIREBASE_CONFIG
+  #   secret: firebase-config
 
   # Cloud Tasks
   - variable: CLOUD_TASKS_PROJECT_ID
