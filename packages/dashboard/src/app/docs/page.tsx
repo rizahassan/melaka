@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export const metadata = {
   title: 'Documentation | Melaka',
@@ -10,9 +11,10 @@ export default function DocsPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
       {/* Header */}
       <div className="border-b border-slate-700">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <Link href="/" className="text-2xl font-bold text-white">
-            🌏 Melaka
+        <div className="max-w-6xl mx-auto px-4 py-6 flex items-center">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/icons/melaka.png" alt="Melaka" width={32} height={32} />
+            <span className="text-2xl font-bold text-white">Melaka</span>
           </Link>
           <span className="text-slate-400 ml-4">Documentation</span>
         </div>
