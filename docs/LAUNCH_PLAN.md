@@ -18,8 +18,8 @@
 ### Legal & Compliance
 - [x] **Privacy Policy** — How you handle customer Firebase data
 - [x] **Terms of Service** — Usage terms, liability, refunds
-- [ ] **Data Processing Agreement** — For enterprise customers
-- [ ] **GDPR considerations** — Data residency, deletion requests
+- [x] **Data Processing Agreement** — For enterprise customers
+- [x] **GDPR considerations** — Data residency, deletion requests, sub-processors, SCCs
 
 ---
 
